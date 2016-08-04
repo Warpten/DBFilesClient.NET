@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>Warpten</authors>
+    <owners>Warpten</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A blazing-fast DBC and DB2 file loader for World of Warcraft files.</description>
+    <tags>DBC DB2 WDBC WDB2 WDB3 WDB4 WDB5 WOW</tags>
+  </metadata>
+</package>
