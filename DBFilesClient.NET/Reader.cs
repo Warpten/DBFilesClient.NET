@@ -3,7 +3,7 @@ using System.IO;
 
 namespace DBFilesClient.NET
 {
-    public abstract class Reader : BinaryReader
+    internal abstract class Reader : BinaryReader
     {
         // ReSharper disable UnusedMemberInSuper.Global
         public abstract string ReadInlineString();

@@ -4,13 +4,9 @@ namespace DBFilesClient.NET
 {
     public class InvalidStructureException : Exception
     {
-        public string Message { get; }
-
-        public InvalidStructureException(string message)
+        public InvalidStructureException(string message) : base(message)
         {
-            Message = message;
+            
         }
-
-        public override string ToString() => Message;
     }
 }
