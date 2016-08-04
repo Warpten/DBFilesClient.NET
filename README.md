@@ -43,7 +43,7 @@ For all file formats, you should provide reference-type structures to the librar
 
 Bidimentional arrays are not supported; neither are collections.
 
-#### WDBC
+#### WDBC & WDB2
 
 Nothing special here, just mark arrays with MarshalAsAttribute, specifying the size.
 

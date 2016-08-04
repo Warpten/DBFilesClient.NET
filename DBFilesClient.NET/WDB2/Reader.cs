@@ -6,12 +6,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Sigil;
 
-namespace DBFilesClient.NET.DBC
+namespace DBFilesClient.NET.WDB2
 {
-    internal sealed class Reader<T> : Reader where T : class, new()
+    internal class Reader<T> : Reader where T : class, new()
     {
-        private int _recordSize;
-        private int _recordCount;
+        private long _stringTablePosition;
 
         #region Emit Helpers
         // ReSharper disable once StaticMemberInGenericType
@@ -40,22 +39,27 @@ namespace DBFilesClient.NET.DBC
         internal override void Load()
         {
             // We get to this through the Factory, meaning we already read the signature...
-            _recordCount = ReadInt32();
-            var fieldCount = ReadInt32(); // Counts arrays
-            _recordSize = ReadInt32();
-            var stringBlockSize = ReadInt32();
+            var recordCount = ReadInt32();
+            BaseStream.Position += 4;
+            var recordSize = ReadInt32();
+            var stringTableSize = ReadInt32();
+            BaseStream.Position += 12;
+            var minIndex = ReadInt32();
+            var maxIndex = ReadInt32();
 
             // Generate the record loader function now.
             _loader = GenerateRecordLoader();
 
+            BaseStream.Position += 8 + (maxIndex - minIndex + 1) * (4 + 2);
+
+            _stringTablePosition = BaseStream.Length - stringTableSize;
+
             var recordPosition = BaseStream.Position;
-            for (var i = 0; i < _recordCount; ++i)
+            for (var i = 0; i < recordCount; ++i)
             {
                 LoadRecord();
-                recordPosition += _recordSize;
-                BaseStream.Position = recordPosition;
+                BaseStream.Position = recordPosition += recordSize;
             }
-
         }
 
         private delegate T LoaderDelegate(Reader<T> table);
@@ -68,18 +72,8 @@ namespace DBFilesClient.NET.DBC
             TriggerRecordLoaded(key, _loader(this));
         }
 
-        private LoaderDelegate GenerateRecordLoader()
+        private static LoaderDelegate GenerateRecordLoader()
         {
-            // This is here strictly for debugging (saves to an assembly that can be loaded in ilspy et al)
-            /*var asmName = new AssemblyName("DynamicCreateAssembly");
-            var asm = AppDomain.CurrentDomain.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndSave);
-            var mod = asm.DefineDynamicModule(asmName.Name, asmName.Name + ".dll");
-            var typeBuilder = mod.DefineType("MyType", TypeAttributes.Public | TypeAttributes.Class);
-            //var method = typeBuilder.DefineMethod("DynamicCreate_T", MethodAttributes.Static | MethodAttributes.Public,
-            //   typeof (T), new[] { typeof(DBFileBinaryReader), typeof(DB2<T>) });
-            var emitter = Emit<LoaderDelegate>.BuildMethod(typeBuilder, "DynamicCreate_T",
-                MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard);*/
-
             var emitter = Emit<LoaderDelegate>.NewDynamicMethod("LoaderDelegate", null, false);
             var resultLocal = emitter.DeclareLocal<T>();
             emitter.NewObject<T>();
@@ -143,10 +137,6 @@ namespace DBFilesClient.NET.DBC
             emitter.LoadLocal(resultLocal);
             emitter.Return();
 
-            /*emiter.CreateMethod();
-            typeBuilder.CreateType();
-            asm.Save(asmName.Name + ".dll");*/
-
             return emitter.CreateDelegate();
         }
 
@@ -173,7 +163,7 @@ namespace DBFilesClient.NET.DBC
             var oldPosition = BaseStream.Position + 4;
 
             // Compute offset to string in table.
-            BaseStream.Position = ReadInt32() + 20 + _recordSize * _recordCount;
+            BaseStream.Position = ReadInt32() + _stringTablePosition;
 
             // Read the string inline.
             var stringValue = ReadInlineString();

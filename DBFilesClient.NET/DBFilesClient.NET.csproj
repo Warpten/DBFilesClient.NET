@@ -44,8 +44,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DB5\Reader.cs" />
-    <Compile Include="DBC\Reader.cs" />
+    <Compile Include="WDB2\Reader.cs" />
+    <Compile Include="WDB5\Reader.cs" />
+    <Compile Include="WDBC\Reader.cs" />
     <Compile Include="DBFileNameAttribute.cs" />
     <Compile Include="InvalidStructureException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

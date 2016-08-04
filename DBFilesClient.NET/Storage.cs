@@ -15,17 +15,19 @@ namespace DBFilesClient.NET
                 using (var memoryStream = new MemoryStream(fileBytes))
                 using (var binaryReader = new BinaryReader(memoryStream))
                 {
-
                     var signature = binaryReader.ReadInt32();
 
                     Reader baseReader;
                     switch (signature)
                     {
                         case 0x35424457:
-                            baseReader = new DB5.Reader<T>(memoryStream);
+                            baseReader = new WDB5.Reader<T>(memoryStream);
+                            break;
+                        case 0x32424457:
+                            baseReader = new WDB2.Reader<T>(memoryStream);
                             break;
                         case 0x43424457:
-                            baseReader = new DBC.Reader<T>(memoryStream);
+                            baseReader = new WDBC.Reader<T>(memoryStream);
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(signature.ToString("X"));

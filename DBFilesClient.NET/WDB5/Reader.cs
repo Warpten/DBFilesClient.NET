@@ -4,16 +4,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sigil;
 
-namespace DBFilesClient.NET.DB5
+namespace DBFilesClient.NET.WDB5
 {
     internal sealed class Reader<T> : Reader where T : class, new()
     {
-        public class FileHeader
+        private class FileHeader
         {
             public int RecordSize { get; set; }
             public int RecordCount { get; set; }
