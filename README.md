@@ -100,23 +100,24 @@ We then add the amount of entries in the copy table.
 ```
 File name                        Time to load        Record count   Expected   OK
 ---------------------------------------------------------------------------------
-Spell                            00:00:12.3439573    158280         158280     OK
-SpellEffect                      00:00:03.4151068    235970         235970     OK
-Item-sparse                      00:00:02.5432846    93432          93432      OK
-SoundKit                         00:00:01.9559884    66871          66871      OK
-ItemSearchName                   00:00:01.9485236    76339          76339      OK
-CreatureDisplayInfo              00:00:01.5684715    62121          62121      OK
-SpellXSpellVisual                00:00:01.3541731    97038          97038      OK
-CriteriaTree                     00:00:01.0931841    42868          42868      OK
-TaxiPathNode                     00:00:01.0269692    69861          69861      OK
-WMOAreaTable                     00:00:01.0084363    37874          37874      OK
-ItemModifiedAppearance           00:00:00.9967128    79573          79573      OK
-SpellMisc                        00:00:00.8513530    159202         159202     OK
-SpellInterrupts                  00:00:00.3890539    46785          46785      OK
-ItemSpecOverride                 00:00:00.3868698    55581          55581      OK
-SpellCategories                  00:00:00.3722960    39087          39087      OK
-Item                             00:00:00.2534158    117277         117277     OK
-SpellCastTimes                   00:00:00.0534415    129            129        OK
+Spell                            00:00:00.8905325    158280         158280     OK
+SpellEffect                      00:00:00.6427693    235970         235970     OK
+Item-sparse                      00:00:00.7340361    93432          93432      OK
+SoundKit                         00:00:00.2466342    66871          66871      OK
+ItemSearchName                   00:00:00.2603996    76339          76339      OK
+CreatureDisplayInfo              00:00:00.1517513    62121          62121      OK
+SpellXSpellVisual                00:00:00.1608694    97038          97038      OK
+CriteriaTree                     00:00:00.1630648    42868          42868      OK
+TaxiPathNode                     00:00:00.1258343    69861          69861      OK
+WMOAreaTable                     00:00:00.1784469    37874          37874      OK
+ItemModifiedAppearance           00:00:00.1325420    79573          79573      OK
+SpellMisc                        00:00:00.3252460    159202         159202     OK
+SpellInterrupts                  00:00:00.1456599    46785          46785      OK
+ItemSpecOverride                 00:00:00.0775243    55581          55581      OK
+SpellCategories                  00:00:00.0764223    39087          39087      OK
+Item                             00:00:00.1168999    117277         117277     OK
+SpellCastTimes                   00:00:00.0548959    129            129        OK
+SpellItemEnchantmentCondition    00:00:00.0564202    0              0          OK
 ```
 
 ## Reference
