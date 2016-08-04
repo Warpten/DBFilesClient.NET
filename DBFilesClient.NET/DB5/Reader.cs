@@ -304,17 +304,7 @@ namespace DBFilesClient.NET.DB5
 
         private LoaderDelegate GenerateRecordLoader()
         {
-#if DEBUG
-            // This is here strictly for debugging (saves to an assembly that can be loaded in ilspy et al)
-            var asmName = new AssemblyName("DynamicCreateAssembly");
-            var asm = AppDomain.CurrentDomain.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndSave);
-            var mod = asm.DefineDynamicModule(asmName.Name, asmName.Name + ".dll");
-            var typeBuilder = mod.DefineType("MyType", TypeAttributes.Public | TypeAttributes.Class);
-            var emitter = Emit<LoaderDelegate>.BuildMethod(typeBuilder, "DynamicCreate_T",
-                MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard);
-#else
             var emitter = Emit<LoaderDelegate>.NewDynamicMethod("LoaderDelegate", null, false);
-#endif
             var resultLocal = emitter.DeclareLocal<T>();
             emitter.NewObject<T>();
             emitter.StoreLocal(resultLocal);
