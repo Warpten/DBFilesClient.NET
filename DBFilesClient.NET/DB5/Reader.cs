@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sigil;
@@ -238,17 +240,17 @@ namespace DBFilesClient.NET.DB5
                 var newIndex = ReadInt32();
                 var oldIndex = ReadInt32();
                 
-                // Write the new index into the underlying buffer for the copy table.
+                // Write the new index into the underlying buffer.
                 if (!Header.HasIndexTable)
                 {
                     var baseMemoryStream = (MemoryStream)BaseStream;
                     if (Header.FieldMeta[Header.IndexField].ByteSize != 4)
                         throw new InvalidOperationException();
 
-                    var newIndexBytes = BitConverter.GetBytes(newIndex);
                     var underlyingBuffer = baseMemoryStream.GetBuffer();
-                    Buffer.BlockCopy(newIndexBytes, 0,
-                        underlyingBuffer, (int)(offsetMap[oldIndex] + Header.FieldMeta[Header.IndexField].Position), 4);
+                    var position = offsetMap[oldIndex] + Header.FieldMeta[Header.IndexField].Position;
+                    for (var k = 0; k < Header.FieldMeta[Header.IndexField].ByteSize; ++k)
+                        underlyingBuffer[k + position] = (byte)((newIndex >> (8 * k)) & 0xFF);
                 }
 
                 var nextCopyTablePosition = BaseStream.Position;
@@ -302,17 +304,17 @@ namespace DBFilesClient.NET.DB5
 
         private LoaderDelegate GenerateRecordLoader()
         {
+#if DEBUG
             // This is here strictly for debugging (saves to an assembly that can be loaded in ilspy et al)
-            /*var asmName = new AssemblyName("DynamicCreateAssembly");
+            var asmName = new AssemblyName("DynamicCreateAssembly");
             var asm = AppDomain.CurrentDomain.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndSave);
             var mod = asm.DefineDynamicModule(asmName.Name, asmName.Name + ".dll");
             var typeBuilder = mod.DefineType("MyType", TypeAttributes.Public | TypeAttributes.Class);
-            //var method = typeBuilder.DefineMethod("DynamicCreate_T", MethodAttributes.Static | MethodAttributes.Public,
-            //   typeof (T), new[] { typeof(DBFileBinaryReader), typeof(DB2<T>) });
             var emitter = Emit<LoaderDelegate>.BuildMethod(typeBuilder, "DynamicCreate_T",
-                MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard);*/
-
+                MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard);
+#else
             var emitter = Emit<LoaderDelegate>.NewDynamicMethod("LoaderDelegate", null, false);
+#endif
             var resultLocal = emitter.DeclareLocal<T>();
             emitter.NewObject<T>();
             emitter.StoreLocal(resultLocal);
@@ -328,6 +330,8 @@ namespace DBFilesClient.NET.DB5
 
                 var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex) ??
                                GetStringLoader(fieldInfo);
+
+                Debug.Assert(callVirt != null);
 
                 var arraySize = 1;
                 if (fieldIndex + 1 < Header.FieldMeta.Length)
