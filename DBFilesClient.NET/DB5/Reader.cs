@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using Sigil;
@@ -304,24 +305,49 @@ namespace DBFilesClient.NET.DB5
 
             var fieldIndex = 0;
 
-            var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance);
+            var fields = typeof (T).GetFields(BindingFlags.Public | BindingFlags.Instance);
             foreach (var fieldInfo in fields)
             {
+                var currentField = Header.FieldMeta[fieldIndex];
                 var fieldType = fieldInfo.FieldType;
-                var isArray = fieldInfo.FieldType.IsArray;
+                var isArray = fieldType.IsArray;
 
                 var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex) ??
                                GetStringLoader(fieldInfo);
 
-                var delimiter = fieldIndex + 1 == Header.FieldMeta.Length
-                    ? Header.RecordSize
-                    : Header.FieldMeta[fieldIndex + 1].Position;
-                delimiter -= Header.FieldMeta[fieldIndex].Position;
-                var arraySize = delimiter / Header.FieldMeta[fieldIndex].ByteSize;
+                var arraySize = 1;
+                if (fieldIndex + 1 < Header.FieldMeta.Length)
+                    arraySize = (Header.FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
+                else
+                {
+                    // Assume last field is not an array
+                    var largestFieldSize = Header.FieldMeta.Max(k => k.ByteSize);
+
+                    var recordSize = currentField.Position + currentField.ByteSize;
+                    while ((recordSize % largestFieldSize) != 0)
+                        ++recordSize;
+
+                    // recordSize now contains the minimum amount of bytes to pad for.
+                    // if RecordSize is larger than the minimum padded size of a record
+                    // what last field as flat, we are guaranteed to deal with an array.
+                    if (Header.RecordSize >= recordSize)
+                    {
+                        arraySize = (Header.RecordSize - recordSize) / currentField.ByteSize;
+                        if (!isArray)
+                            arraySize = 1;
+                    }
+                }
+
+                var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+                if (marshalAttr != null && isArray)
+                    arraySize = marshalAttr.SizeConst;
+
+                if (!Header.HasIndexTable && fieldIndex == Header.IndexField)
+                    arraySize = 1;
 
                 if (!isArray)
                 {
-                    if (arraySize > 1)
+                    if (arraySize != 1)
                         throw new InvalidStructureException(
                             $"Field {typeof(T).Name}.{fieldInfo.Name} is an array but is declared as non-array.");
 

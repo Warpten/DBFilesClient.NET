@@ -62,7 +62,9 @@ public sealed class AreaTableEntry
 
 #### WDB5
 
-Due to the nature of the WDB5 format, arrays do not need an explicit size defined through attributes. Size is inferred from the file.
+Due to the nature of the WDB5 format, arrays do not need *always* an explicit size defined through attributes. Size is inferred from the file.
+Due to the code having difficulty to determine the size of arrays at the end of the record, you can make sure your array is properly loaded by decorating that field with a `MarshalAsAttribute`.
+
 
 ```c#
 public sealed class AreaTableEntry
@@ -73,8 +75,13 @@ public sealed class AreaTableEntry
     public string AreaName;
     public ushort MapID;
     ...
+    // Optional, but use it if you want to be safe
+    [MarshalAs(UnManagedType.ByValArray, SizeConst = ...)]
+    public int Element;
 }
 ```
+
+Providing explicit array size for non-ending fields can also be done, but it will most likely be redundant.
 
 ## Performance
 
