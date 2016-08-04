@@ -77,7 +77,7 @@ public sealed class AreaTableEntry
     ...
     // Optional, but use it if you want to be safe
     [MarshalAs(UnManagedType.ByValArray, SizeConst = ...)]
-    public int Element;
+    public int[] Element;
 }
 ```
 
