@@ -69,6 +69,7 @@ Due to the code having difficulty to determine the size of arrays at the end of 
 ```c#
 public sealed class AreaTableEntry
 {
+    // MarshalAsAttribute here does not improve anything
     public uint[] Flags;
     public string ZoneName;
     public float AmbientMultiplier;

@@ -8,25 +8,32 @@ namespace DBFilesClient.NET
     {
         public Storage(string fileName)
         {
-            using (var stream = File.Open(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var binaryReader = new BinaryReader(stream))
+            using (var fileStream = File.Open(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                var signature = binaryReader.ReadInt32();
-                Reader baseReader;
-                switch (signature)
+                var fileBytes = new byte[fileStream.Length];
+                fileStream.Read(fileBytes, 0, fileBytes.Length);
+                using (var memoryStream = new MemoryStream(fileBytes))
+                using (var binaryReader = new BinaryReader(memoryStream))
                 {
-                    case 0x35424457:
-                        baseReader = new DB5.Reader<T>(stream);
-                        break;
-                    case 0x43424457:
-                        baseReader = new DBC.Reader<T>(stream);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(signature.ToString("X"));
-                }
 
-                baseReader.OnRecordLoaded += (index, record) => this[index] = (T) record;
-                baseReader.Load();
+                    var signature = binaryReader.ReadInt32();
+
+                    Reader baseReader;
+                    switch (signature)
+                    {
+                        case 0x35424457:
+                            baseReader = new DB5.Reader<T>(memoryStream);
+                            break;
+                        case 0x43424457:
+                            baseReader = new DBC.Reader<T>(memoryStream);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(signature.ToString("X"));
+                    }
+
+                    baseReader.OnRecordLoaded += (index, record) => this[index] = (T)record;
+                    baseReader.Load();
+                }
             }
         } 
     }

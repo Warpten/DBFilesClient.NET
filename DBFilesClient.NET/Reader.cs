@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace DBFilesClient.NET
@@ -15,10 +16,19 @@ namespace DBFilesClient.NET
         protected void TriggerRecordLoaded(int key, object record) => 
             OnRecordLoaded?.Invoke(key, record);
 
-        protected Reader(Stream input) : base(input)
+        protected Reader(Stream data) : base(data)
         {
+            Debug.Assert(data is MemoryStream);
         }
 
         internal abstract void Load();
+
+        public int ReadInt24()
+        {
+            return ReadByte() | (ReadByte() << 8) | (ReadByte() << 16);
+        }
+
+        // ReSharper disable once UnusedMember.Global
+        public uint ReadUInt24() => (uint)ReadInt24();
     }
 }

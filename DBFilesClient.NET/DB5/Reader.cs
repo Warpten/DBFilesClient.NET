@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using Sigil;
 
@@ -47,8 +48,8 @@ namespace DBFilesClient.NET.DB5
             { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) }
         };
 
-        private MethodInfo _readInt24 = typeof (Reader<T>).GetMethod("ReadInt24", Type.EmptyTypes);
-        private MethodInfo _readUInt24 = typeof (Reader<T>).GetMethod("ReadUInt24", Type.EmptyTypes);
+        private static MethodInfo _readInt24 = typeof (Reader).GetMethod("ReadInt24", Type.EmptyTypes);
+        private static MethodInfo _readUInt24 = typeof (Reader).GetMethod("ReadUInt24", Type.EmptyTypes);
 
         private MethodInfo _stringReaderMethod;
         // ReSharper restore StaticMemberInGenericType
@@ -142,7 +143,7 @@ namespace DBFilesClient.NET.DB5
         }
         #endregion
 
-        internal Reader(Stream fileStream) : base(fileStream)
+        internal Reader(MemoryStream fileData) : base(fileData)
         {
             // We get to this through the Factory, meaning we already read the signature...
         }
@@ -236,6 +237,19 @@ namespace DBFilesClient.NET.DB5
             {
                 var newIndex = ReadInt32();
                 var oldIndex = ReadInt32();
+                
+                // Write the new index into the underlying buffer for the copy table.
+                if (!Header.HasIndexTable)
+                {
+                    var baseMemoryStream = (MemoryStream)BaseStream;
+                    if (Header.FieldMeta[Header.IndexField].ByteSize != 4)
+                        throw new InvalidOperationException();
+
+                    var newIndexBytes = BitConverter.GetBytes(newIndex);
+                    var underlyingBuffer = baseMemoryStream.GetBuffer();
+                    Buffer.BlockCopy(newIndexBytes, 0,
+                        underlyingBuffer, (int)(offsetMap[oldIndex] + Header.FieldMeta[Header.IndexField].Position), 4);
+                }
 
                 var nextCopyTablePosition = BaseStream.Position;
                 BaseStream.Position = offsetMap[oldIndex];
@@ -406,15 +420,6 @@ namespace DBFilesClient.NET.DB5
 
             return emitter.CreateDelegate();
         }
-
-        // ReSharper disable once MemberCanBePrivate.Global
-        public int ReadInt24()
-        {
-            return ReadByte() | (ReadByte() << 8) | (ReadByte() << 16);
-        }
-
-        // ReSharper disable once UnusedMember.Global
-        public uint ReadUInt24() => (uint) ReadInt24();
 
         public class FieldEntry
         {
