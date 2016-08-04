@@ -146,7 +146,7 @@ namespace DBFilesClient.NET.DB5
             // We get to this through the Factory, meaning we already read the signature...
         }
 
-        public void Load()
+        internal override void Load()
         {
             Header.RecordCount = ReadInt32();
             Header.FieldMeta = new FieldEntry[ReadInt32()];
@@ -313,8 +313,18 @@ namespace DBFilesClient.NET.DB5
                 var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex) ??
                                GetStringLoader(fieldInfo);
 
+                var delimiter = fieldIndex + 1 == Header.FieldMeta.Length
+                    ? Header.RecordSize
+                    : Header.FieldMeta[fieldIndex + 1].Position;
+                delimiter -= Header.FieldMeta[fieldIndex].Position;
+                var arraySize = delimiter / Header.FieldMeta[fieldIndex].ByteSize;
+
                 if (!isArray)
                 {
+                    if (arraySize > 1)
+                        throw new InvalidStructureException(
+                            $"Field {typeof(T).Name}.{fieldInfo.Name} is an array but is declared as non-array.");
+
                     emitter.LoadLocal(resultLocal);
                     emitter.LoadArgument(0);
                     emitter.CallVirtual(callVirt);
@@ -322,14 +332,9 @@ namespace DBFilesClient.NET.DB5
                 }
                 else
                 {
-                    var delimiter = fieldIndex + 1 == Header.FieldMeta.Length
-                         ? Header.RecordSize
-                         : Header.FieldMeta[fieldIndex + 1].Position;
-                    delimiter -= Header.FieldMeta[fieldIndex].Position;
-                    var arraySize = delimiter / Header.FieldMeta[fieldIndex].ByteSize;
-
                     if (arraySize == 1)
-                        throw new InvalidStructureException("Invalid structure!");
+                        throw new InvalidStructureException(
+                            $"Field {typeof(T).Name}.{fieldInfo.Name} is not an array but is declared as an array.");
 
                     emitter.LoadLocal(resultLocal);
                     emitter.LoadConstant(arraySize);

@@ -35,6 +35,10 @@ namespace DBFilesClient.NET.DBC
 
         internal Reader(Stream fileStream) : base(fileStream)
         {
+        }
+
+        internal override void Load()
+        {
             // We get to this through the Factory, meaning we already read the signature...
             _recordCount = ReadInt32();
             var fieldCount = ReadInt32(); // Counts arrays

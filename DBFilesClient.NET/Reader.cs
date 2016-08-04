@@ -18,5 +18,7 @@ namespace DBFilesClient.NET
         protected Reader(Stream input) : base(input)
         {
         }
+
+        internal abstract void Load();
     }
 }

@@ -26,6 +26,7 @@ namespace DBFilesClient.NET
                 }
 
                 baseReader.OnRecordLoaded += (index, record) => this[index] = (T) record;
+                baseReader.Load();
             }
         } 
     }
