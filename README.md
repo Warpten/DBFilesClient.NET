@@ -29,6 +29,14 @@ foreach (var type in Assembly.GetAssembly(typeof (ReaderTest)).GetTypes())
 }
 ```
 
+Regular instantiation goes by
+
+```csharp
+var instance = new Storage<AreaTriggerEntry>("AreaTrigger.db2");
+```
+
+Note that `Storage<T>` behaves like a `Dictionary<int, T>`.
+
 ### File formats and structures
 
 For all file formats, you should provide reference-type structures to the library. Fields (and not properties, though that is subject to changes in the future) will get loaded in the order they are defined.
