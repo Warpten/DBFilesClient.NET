@@ -124,24 +124,6 @@ namespace DBFilesClient.NET.WDB5
             BaseStream.Position = oldPosition;
             return stringValue;
         }
-
-        // ReSharper disable once MemberCanBePrivate.Global
-        public override string ReadInlineString()
-        {
-            var stringStart = BaseStream.Position;
-            var stringLength = 0;
-            while (ReadByte() != '\0')
-                ++stringLength;
-            BaseStream.Position = stringStart;
-
-            if (stringLength == 0)
-                return string.Empty;
-
-            var stringValue = Encoding.UTF8.GetString(ReadBytes(stringLength));
-            ReadByte();
-
-            return stringValue;
-        }
         #endregion
 
         internal Reader(MemoryStream fileData) : base(fileData)
@@ -411,7 +393,7 @@ namespace DBFilesClient.NET.WDB5
             typeBuilder.CreateType();
             asm.Save(asmName.Name + ".dll");*/
 
-            return emitter.CreateDelegate();
+            return emitter.CreateDelegate(OptimizationOptions.None);
         }
 
         public class FieldEntry

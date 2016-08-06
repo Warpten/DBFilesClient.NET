@@ -1,13 +1,30 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 
 namespace DBFilesClient.NET
 {
     internal abstract class Reader : BinaryReader
     {
         // ReSharper disable UnusedMemberInSuper.Global
-        public abstract string ReadInlineString();
+        public string ReadInlineString()
+        {
+            var stringStart = BaseStream.Position;
+            var stringLength = 0;
+            while (ReadByte() != '\0')
+                ++stringLength;
+            BaseStream.Position = stringStart;
+
+            if (stringLength == 0)
+                return string.Empty;
+
+            var stringValue = Encoding.UTF8.GetString(ReadBytes(stringLength));
+            ReadByte();
+
+            return stringValue;
+        }
+
         public abstract string ReadTableString();
         // ReSharper restore UnusedMemberInSuper.Global
 

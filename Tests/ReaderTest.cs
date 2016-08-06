@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using DBFilesClient.NET;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -12,8 +14,8 @@ namespace Tests
         [TestMethod]
         public void TestDB5()
         {
-            Console.WriteLine("File name                        Time to load        Record count");
-            Console.WriteLine("-----------------------------------------------------------------");
+            Console.WriteLine("File name                        Average time to load     Minimum time       Maximum time       Record count");
+            Console.WriteLine("-----------------------------------------------------------------------------------------------------");
 
             foreach (var type in Assembly.GetAssembly(typeof (ReaderTest)).GetTypes())
             {
@@ -24,17 +26,29 @@ namespace Tests
                 if (attr == null)
                     continue;
 
-                var instanceType = typeof (Storage<>).MakeGenericType(type);
+                var times = new List<long>();
+                var recordCount = 0;
 
-                var countGetter = instanceType.GetProperty("Count").GetGetMethod();
-                var stopwatch = Stopwatch.StartNew();
-                var instance = Activator.CreateInstance(instanceType, $@"D:\DataDir\22045\dbc\frFR\{attr.FileName}.db2");
-                stopwatch.Stop();
+                for (var i = 1; i <= 10; ++i)
+                {
+                    var instanceType = typeof (Storage<>).MakeGenericType(type);
 
-                var recordCount = (int)countGetter.Invoke(instance, new object[] {});
+                    var countGetter = instanceType.GetProperty("Count").GetGetMethod();
+                    var stopwatch = Stopwatch.StartNew();
+                    var instance = Activator.CreateInstance(instanceType,
+                        $@"D:\DataDir\22045\dbc\frFR\{attr.FileName}.db2");
+                    stopwatch.Stop();
 
-                Console.WriteLine("{0}{1}{2}",
-                    attr.FileName.PadRight(33), stopwatch.Elapsed.ToString().PadRight(20), recordCount);
+                    times.Add(stopwatch.ElapsedTicks);
+
+                    if (recordCount == 0)
+                        recordCount = (int) countGetter.Invoke(instance, new object[] {});
+                }
+
+                Console.WriteLine("{0}{1}{2}{3}{4}",
+                    attr.FileName.PadRight(33),
+                    TimeSpan.FromTicks((long)times.Average()).ToString().PadRight(25), TimeSpan.FromTicks(times.Min()).ToString().PadRight(19), TimeSpan.FromTicks(times.Max()).ToString().PadRight(19),
+                    recordCount);
             }
         }
     }

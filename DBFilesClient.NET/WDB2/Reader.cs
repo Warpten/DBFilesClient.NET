@@ -137,24 +137,7 @@ namespace DBFilesClient.NET.WDB2
             emitter.LoadLocal(resultLocal);
             emitter.Return();
 
-            return emitter.CreateDelegate();
-        }
-
-        public override string ReadInlineString()
-        {
-            var stringStart = BaseStream.Position;
-            var stringLength = 0;
-            while (ReadByte() != '\0')
-                ++stringLength;
-            BaseStream.Position = stringStart;
-
-            if (stringLength == 0)
-                return string.Empty;
-
-            var stringValue = Encoding.UTF8.GetString(ReadBytes(stringLength));
-            ReadByte();
-
-            return stringValue;
+            return emitter.CreateDelegate(OptimizationOptions.None);
         }
 
         public override string ReadTableString()
