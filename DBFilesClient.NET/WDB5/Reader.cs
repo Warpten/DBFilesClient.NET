@@ -46,13 +46,14 @@ namespace DBFilesClient.NET.WDB5
             { TypeCode.Byte, typeof (BinaryReader).GetMethod("ReadByte", Type.EmptyTypes) },
 
             { TypeCode.Char, typeof (BinaryReader).GetMethod("ReadChar", Type.EmptyTypes) },
-            { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) }
+            { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) },
+
+            { TypeCode.String, typeof (Reader<T>).GetMethod("ReadTableString", Type.EmptyTypes) }
         };
 
         private static MethodInfo _readInt24 = typeof (Reader).GetMethod("ReadInt24", Type.EmptyTypes);
         private static MethodInfo _readUInt24 = typeof (Reader).GetMethod("ReadUInt24", Type.EmptyTypes);
 
-        private MethodInfo _stringReaderMethod;
         // ReSharper restore StaticMemberInGenericType
 
         private MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
@@ -88,45 +89,14 @@ namespace DBFilesClient.NET.WDB5
             MethodInfo methodInfo;
             return _binaryReaderMethods.TryGetValue(typeCode, out methodInfo) ? methodInfo : null;
         }
-
-        private MethodInfo GetStringLoader(FieldInfo fieldInfo)
-        {
-            var fieldType = fieldInfo.FieldType;
-            if (fieldType.IsArray)
-                fieldType = fieldType.GetElementType();
-
-            var typeCode = Type.GetTypeCode(fieldType);
-            if (typeCode != TypeCode.String)
-                return null;
-
-            if (_stringReaderMethod != null)
-                return _stringReaderMethod;
-
-            _stringReaderMethod = Header.HasStringTable ?
-                typeof (Reader<T>).GetMethod("ReadTableString", Type.EmptyTypes) :
-                typeof (Reader<T>).GetMethod("ReadInlineString", Type.EmptyTypes);
-            return _stringReaderMethod;
-        }
-
-        // ReSharper disable once UnusedMember.Global
-        public override string ReadTableString()
-        {
-            // Store position of the next field in this record.
-            var oldPosition = BaseStream.Position + 4;
-
-            // Compute offset to string in table.
-            BaseStream.Position = ReadInt32() + Header.RecordOffset + Header.RecordSize * Header.RecordCount;
-
-            // Read the string inline.
-            var stringValue = ReadInlineString();
-
-            // Restore stream position.
-            BaseStream.Position = oldPosition;
-            return stringValue;
-        }
         #endregion
 
-        internal Reader(MemoryStream fileData) : base(fileData)
+        public override string ReadTableString()
+        {
+            return !Header.HasStringTable ? ReadInlineString() : base.ReadTableString();
+        }
+
+        internal Reader(Stream fileData) : base(fileData)
         {
             // We get to this through the Factory, meaning we already read the signature...
         }
@@ -136,12 +106,10 @@ namespace DBFilesClient.NET.WDB5
             Header.RecordCount = ReadInt32();
             Header.FieldMeta = new FieldEntry[ReadInt32()];
             Header.RecordSize = ReadInt32();
-            ReadInt32(); // String table size or garbage (supposedly absolute address of offsetMap ...)
-            ReadInt32(); // Table hash
-            ReadInt32(); // Layout hash
+            BaseStream.Position += 4 + 4 + 4;
             var minIndex = ReadInt32();
             var maxIndex = ReadInt32();
-            ReadInt32(); // Locale mask
+            BaseStream.Position += 4;
             var copyTableSize = ReadInt32();
             Header.Flags = ReadUInt16();
             Header.IndexField = ReadUInt16();
@@ -153,6 +121,8 @@ namespace DBFilesClient.NET.WDB5
                 Header.FieldMeta[i].BitSize = ReadInt16();
                 Header.FieldMeta[i].Position = ReadUInt16();
             }
+
+            StringTableOffset = Header.RecordOffset + Header.RecordSize * Header.RecordCount;
 
             // Field metadata is loaded, generate the record loader function now.
             _loader = GenerateRecordLoader();
@@ -299,9 +269,7 @@ namespace DBFilesClient.NET.WDB5
                 var fieldType = fieldInfo.FieldType;
                 var isArray = fieldType.IsArray;
 
-                var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex) ??
-                               GetStringLoader(fieldInfo);
-
+                var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex);
                 Debug.Assert(callVirt != null);
 
                 var arraySize = 1;

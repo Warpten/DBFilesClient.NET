@@ -10,8 +10,6 @@ namespace DBFilesClient.NET.WDBC
 {
     internal sealed class Reader<T> : Reader where T : class, new()
     {
-        private long _stringTablePosition;
-
         #region Emit Helpers
         // ReSharper disable once StaticMemberInGenericType
         private static Dictionary<TypeCode, MethodInfo> _binaryReaderMethods = new Dictionary<TypeCode, MethodInfo>()
@@ -44,7 +42,7 @@ namespace DBFilesClient.NET.WDBC
             var recordSize = ReadInt32();
             var stringBlockSize = ReadInt32();
 
-            _stringTablePosition = BaseStream.Length - stringBlockSize;
+            StringTableOffset = BaseStream.Length - stringBlockSize;
 
             // Generate the record loader function now.
             _loader = GenerateRecordLoader();
@@ -134,22 +132,6 @@ namespace DBFilesClient.NET.WDBC
             emitter.Return();
 
             return emitter.CreateDelegate(OptimizationOptions.None);
-        }
-
-        public override string ReadTableString()
-        {
-            // Store position of the next field in this record.
-            var oldPosition = BaseStream.Position + 4;
-
-            // Compute offset to string in table.
-            BaseStream.Position = ReadInt32() + _stringTablePosition;
-
-            // Read the string inline.
-            var stringValue = ReadInlineString();
-
-            // Restore stream position.
-            BaseStream.Position = oldPosition;
-            return stringValue;
         }
     }
 }

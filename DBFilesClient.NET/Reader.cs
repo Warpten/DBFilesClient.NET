@@ -7,7 +7,8 @@ namespace DBFilesClient.NET
 {
     internal abstract class Reader : BinaryReader
     {
-        // ReSharper disable UnusedMemberInSuper.Global
+        protected long StringTableOffset { get; set; }
+
         public string ReadInlineString()
         {
             var stringStart = BaseStream.Position;
@@ -25,8 +26,21 @@ namespace DBFilesClient.NET
             return stringValue;
         }
 
-        public abstract string ReadTableString();
-        // ReSharper restore UnusedMemberInSuper.Global
+        public virtual string ReadTableString()
+        {
+            // Store position of the next field in this record.
+            var oldPosition = BaseStream.Position + 4;
+
+            // Compute offset to string in table.
+            BaseStream.Position = ReadInt32() + StringTableOffset;
+
+            // Read the string inline.
+            var stringValue = ReadInlineString();
+
+            // Restore stream position.
+            BaseStream.Position = oldPosition;
+            return stringValue;
+        }
 
         public event Action<int, object> OnRecordLoaded;
 
