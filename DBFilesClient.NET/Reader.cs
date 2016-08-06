@@ -7,8 +7,9 @@ namespace DBFilesClient.NET
 {
     internal abstract class Reader : BinaryReader
     {
-        protected long StringTableOffset { get; set; }
+        protected long StringTableOffset { private get; set; }
 
+        // ReSharper disable once MemberCanBeProtected.Global
         public string ReadInlineString()
         {
             var stringStart = BaseStream.Position;
@@ -26,6 +27,8 @@ namespace DBFilesClient.NET
             return stringValue;
         }
 
+        // ReSharper disable once MemberCanBeProtected.Global
+        // ReSharper disable once UnusedMemberHiearchy.Global
         public virtual string ReadTableString()
         {
             // Store position of the next field in this record.
@@ -44,8 +47,7 @@ namespace DBFilesClient.NET
 
         public event Action<int, object> OnRecordLoaded;
 
-        protected void TriggerRecordLoaded(int key, object record) => 
-            OnRecordLoaded?.Invoke(key, record);
+        protected void TriggerRecordLoaded(int key, object record) => OnRecordLoaded?.Invoke(key, record);
 
         protected Reader(Stream data) : base(data)
         {
@@ -54,6 +56,7 @@ namespace DBFilesClient.NET
 
         internal abstract void Load();
 
+        // ReSharper disable once MemberCanBeProtected.Global
         public int ReadInt24()
         {
             return ReadByte() | (ReadByte() << 8) | (ReadByte() << 16);

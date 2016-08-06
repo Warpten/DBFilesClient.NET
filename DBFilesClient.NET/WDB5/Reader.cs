@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using Sigil;
 
 namespace DBFilesClient.NET.WDB5
@@ -16,7 +15,7 @@ namespace DBFilesClient.NET.WDB5
         {
             public int RecordSize { get; set; }
             public int RecordCount { get; set; }
-            public ushort Flags { get; set; }
+            public ushort Flags { private get; set; }
             public ushort IndexField { get; set; }
 
             public FieldEntry[] FieldMeta { get; set; }
@@ -364,7 +363,7 @@ namespace DBFilesClient.NET.WDB5
             return emitter.CreateDelegate(OptimizationOptions.None);
         }
 
-        public class FieldEntry
+        private class FieldEntry
         {
             public short BitSize { private get; set; }
             public ushort Position { get; set; }

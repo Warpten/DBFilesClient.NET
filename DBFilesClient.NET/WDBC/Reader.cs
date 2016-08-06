@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using Sigil;
 
 namespace DBFilesClient.NET.WDBC
@@ -38,7 +37,7 @@ namespace DBFilesClient.NET.WDBC
         {
             // We get to this through the Factory, meaning we already read the signature...
             var recordCount = ReadInt32();
-            ReadInt32(); // Counts arrays
+            BaseStream.Position += 4; // Counts arrays
             var recordSize = ReadInt32();
             var stringBlockSize = ReadInt32();
 
