@@ -79,6 +79,8 @@ namespace DBFilesClient.NET.WDB5
         internal override void Load()
         {
             Header.RecordCount = ReadInt32();
+            if (Header.RecordCount == 0)
+                return;
             Header.FieldMeta = new FieldEntry[ReadInt32()];
             Header.RecordSize = ReadInt32();
             BaseStream.Position += 4 + 4 + 4;
@@ -250,16 +252,15 @@ namespace DBFilesClient.NET.WDB5
                 var arraySize = 1;
                 if (fieldIndex + 1 < Header.FieldMeta.Length)
                     arraySize = (Header.FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
-                else
+                else if (isArray)
                 {
-                    // Assume last field is not an array
                     var largestFieldSize = Header.FieldMeta.Max(k => k.ByteSize);
                     var smallestFieldSize = Header.FieldMeta.Min(k => k.ByteSize);
 
                     if (smallestFieldSize != largestFieldSize)
                     {
                         var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
-                        Debug.Assert(marshalAttr != null);
+                        Debug.Assert(marshalAttr != null, $"{typeof(T).Name}.{fieldInfo.Name} is an array but lacks MarshalAsAttribute!");
                         if (isArray && marshalAttr.SizeConst != 0)
                             arraySize = Math.Min(arraySize, marshalAttr.SizeConst);
                     }
@@ -324,10 +325,6 @@ namespace DBFilesClient.NET.WDB5
 
             emitter.LoadLocal(resultLocal);
             emitter.Return();
-
-            /*emiter.CreateMethod();
-            typeBuilder.CreateType();
-            asm.Save(asmName.Name + ".dll");*/
 
             return emitter.CreateDelegate(OptimizationOptions.None);
         }

@@ -17,6 +17,8 @@ namespace DBFilesClient.NET.WDBC
         {
             // We get to this through the Factory, meaning we already read the signature...
             var recordCount = ReadInt32();
+            if (recordCount == 0)
+                return;
             BaseStream.Position += 4; // Counts arrays
             var recordSize = ReadInt32();
             var stringBlockSize = ReadInt32();
