@@ -79,7 +79,7 @@ public sealed class AreaTableEntry
     public string AreaName;
     public ushort MapID;
     ...
-    // Optional, but use it if you want to be safe
+    // Necessary 9 out of 10 times
     [MarshalAs(UnManagedType.ByValArray, SizeConst = ...)]
     public int[] Element;
 }
