@@ -30,30 +30,8 @@ namespace DBFilesClient.NET.WDB5
 
         private FileHeader Header { get; } = new FileHeader();
 
-        #region Reflection Emit helpers
-        // ReSharper disable StaticMemberInGenericType
-        private static Dictionary<TypeCode, MethodInfo> _binaryReaderMethods = new Dictionary<TypeCode, MethodInfo>()
-        {
-            { TypeCode.Int64, typeof (BinaryReader).GetMethod("ReadInt64", Type.EmptyTypes) },
-            { TypeCode.Int32, typeof (BinaryReader).GetMethod("ReadInt32", Type.EmptyTypes) },
-            { TypeCode.Int16, typeof (BinaryReader).GetMethod("ReadInt16", Type.EmptyTypes) },
-            { TypeCode.SByte, typeof (BinaryReader).GetMethod("ReadSByte", Type.EmptyTypes) },
-
-            { TypeCode.UInt64, typeof (BinaryReader).GetMethod("ReadUInt64", Type.EmptyTypes) },
-            { TypeCode.UInt32, typeof (BinaryReader).GetMethod("ReadUInt32", Type.EmptyTypes) },
-            { TypeCode.UInt16, typeof (BinaryReader).GetMethod("ReadUInt16", Type.EmptyTypes) },
-            { TypeCode.Byte, typeof (BinaryReader).GetMethod("ReadByte", Type.EmptyTypes) },
-
-            { TypeCode.Char, typeof (BinaryReader).GetMethod("ReadChar", Type.EmptyTypes) },
-            { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) },
-
-            { TypeCode.String, typeof (Reader<T>).GetMethod("ReadTableString", Type.EmptyTypes) }
-        };
-
+        // ReSharper disable once StaticMemberInGenericType
         private static MethodInfo _readInt24 = typeof (Reader).GetMethod("ReadInt24", Type.EmptyTypes);
-        private static MethodInfo _readUInt24 = typeof (Reader).GetMethod("ReadUInt24", Type.EmptyTypes);
-
-        // ReSharper restore StaticMemberInGenericType
 
         private MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
         {
@@ -73,22 +51,20 @@ namespace DBFilesClient.NET.WDB5
                 switch (fieldData.ByteSize)
                 {
                     case 4:
-                        return _binaryReaderMethods[typeCode];
+                        return GetPrimitiveLoader(fieldType);
                     case 3:
-                        return typeCode == TypeCode.Int32 ? _readInt24 : _readUInt24;
+                        return _readInt24;
                     case 2:
-                        return typeCode == TypeCode.Int32 ? _binaryReaderMethods[TypeCode.Int16] : _binaryReaderMethods[TypeCode.UInt16];
+                        return GetPrimitiveLoader<short>();
                     case 1:
-                        return typeCode == TypeCode.Int32 ? _binaryReaderMethods[TypeCode.SByte] : _binaryReaderMethods[TypeCode.Byte];
+                        return GetPrimitiveLoader<byte>();
                     default:
                         throw new ArgumentOutOfRangeException($"Field {fieldInfo.Name} has its metadata expose as an unsupported {fieldData.ByteSize}-bytes field!");
                 }
             }
 
-            MethodInfo methodInfo;
-            return _binaryReaderMethods.TryGetValue(typeCode, out methodInfo) ? methodInfo : null;
+            return GetPrimitiveLoader(fieldType);
         }
-        #endregion
 
         public override string ReadTableString()
         {
@@ -278,25 +254,18 @@ namespace DBFilesClient.NET.WDB5
                 {
                     // Assume last field is not an array
                     var largestFieldSize = Header.FieldMeta.Max(k => k.ByteSize);
+                    var smallestFieldSize = Header.FieldMeta.Min(k => k.ByteSize);
 
-                    var recordSize = currentField.Position + currentField.ByteSize;
-                    while ((recordSize % largestFieldSize) != 0)
-                        ++recordSize;
-
-                    // recordSize now contains the minimum amount of bytes to pad for.
-                    // if RecordSize is larger than the minimum padded size of a record
-                    // what last field as flat, we are guaranteed to deal with an array.
-                    if (Header.RecordSize >= recordSize)
+                    if (smallestFieldSize != largestFieldSize)
                     {
-                        arraySize = (Header.RecordSize - recordSize) / currentField.ByteSize;
-                        if (!isArray)
-                            arraySize = 1;
+                        var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+                        Debug.Assert(marshalAttr != null);
+                        if (isArray && marshalAttr.SizeConst != 0)
+                            arraySize = Math.Min(arraySize, marshalAttr.SizeConst);
                     }
+                    else // No padding in this case. Guessing array size is okay.
+                        arraySize = (Header.RecordSize - currentField.Position) / currentField.ByteSize;
                 }
-
-                var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
-                if (marshalAttr != null && isArray)
-                    arraySize = marshalAttr.SizeConst;
 
                 if (!Header.HasIndexTable && fieldIndex == Header.IndexField)
                     arraySize = 1;

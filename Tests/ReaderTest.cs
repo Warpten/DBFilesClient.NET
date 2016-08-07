@@ -15,7 +15,7 @@ namespace Tests
         public void TestDB5()
         {
             Console.WriteLine("File name                        Average time to load     Minimum time       Maximum time       Record count");
-            Console.WriteLine("-----------------------------------------------------------------------------------------------------");
+            Console.WriteLine("------------------------------------------------------------------------------------------------------------");
 
             foreach (var type in Assembly.GetAssembly(typeof (ReaderTest)).GetTypes())
             {

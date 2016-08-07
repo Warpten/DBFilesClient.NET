@@ -9,26 +9,6 @@ namespace DBFilesClient.NET.WDB2
 {
     internal class Reader<T> : Reader where T : class, new()
     {
-        #region Emit Helpers
-        // ReSharper disable once StaticMemberInGenericType
-        private static Dictionary<TypeCode, MethodInfo> _binaryReaderMethods = new Dictionary<TypeCode, MethodInfo>()
-        {
-            { TypeCode.Int64, typeof (BinaryReader).GetMethod("ReadInt64", Type.EmptyTypes) },
-            { TypeCode.Int32, typeof (BinaryReader).GetMethod("ReadInt32", Type.EmptyTypes) },
-            { TypeCode.Int16, typeof (BinaryReader).GetMethod("ReadInt16", Type.EmptyTypes) },
-            { TypeCode.SByte, typeof (BinaryReader).GetMethod("ReadSByte", Type.EmptyTypes) },
-
-            { TypeCode.UInt64, typeof (BinaryReader).GetMethod("ReadUInt64", Type.EmptyTypes) },
-            { TypeCode.UInt32, typeof (BinaryReader).GetMethod("ReadUInt32", Type.EmptyTypes) },
-            { TypeCode.UInt16, typeof (BinaryReader).GetMethod("ReadUInt16", Type.EmptyTypes) },
-            { TypeCode.Byte, typeof (BinaryReader).GetMethod("ReadByte", Type.EmptyTypes) },
-
-            { TypeCode.Char, typeof (BinaryReader).GetMethod("ReadChar", Type.EmptyTypes) },
-            { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) },
-            { TypeCode.String, typeof (Reader).GetMethod("ReadTableString", Type.EmptyTypes) }
-        };
-        #endregion
-
         internal Reader(Stream fileStream) : base(fileStream)
         {
         }
@@ -81,9 +61,8 @@ namespace DBFilesClient.NET.WDB2
             {
                 var fieldType = fieldInfo.FieldType;
                 var isArray = fieldInfo.FieldType.IsArray;
-                var typeCode = Type.GetTypeCode(isArray ? fieldType.GetElementType() : fieldType);
 
-                var callVirt = _binaryReaderMethods[typeCode];
+                var callVirt = GetPrimitiveLoader(fieldType);
 
                 if (!isArray)
                 {

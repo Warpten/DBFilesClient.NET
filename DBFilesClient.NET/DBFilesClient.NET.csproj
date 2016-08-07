@@ -68,6 +68,7 @@
   </Target>
   -->
   <Target Name="AfterBuild" Condition=" '$(Configuration)' == 'Nuget'">
-    <Exec Command="nuget pack $(ProjectFileName) -Prop Configuration=Nuget"></Exec>
+    <Exec Command="nuget pack $(ProjectFileName) -Prop Configuration=Nuget">
+    </Exec>
   </Target>
 </Project>
