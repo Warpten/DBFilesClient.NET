@@ -66,7 +66,7 @@ Due to the nature of the WDB5 format, arrays do not *always* need an explicit si
 
 However, the library has difficulty to determine the size of arrays at the end of the record, because every record in a WDB5 file is aligned to the size of its largest field. You **will** need to decorate your array with `MarshalAsAttribute` most of the time, but if all the fields in that file are of the same size, the attribute will be ignored.
 
-To put it simply, decorating an array with `MarshaAsAttribute` is necessary if your structure ends with an array.
+To put it simply, decorating an array with `MarshalAsAttribute` is necessary if your structure ends with that array.
 
 ```c#
 public sealed class AreaTableEntry
