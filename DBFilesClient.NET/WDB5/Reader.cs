@@ -73,7 +73,6 @@ namespace DBFilesClient.NET.WDB5
 
         internal Reader(Stream fileData) : base(fileData)
         {
-            // We get to this through the Factory, meaning we already read the signature...
         }
 
         internal override void Load()
@@ -127,7 +126,8 @@ namespace DBFilesClient.NET.WDB5
                 {
                     // <Simca_> records are padded to largest field size, 35 is padded
                     //          to 36 because 35 isn't divisible by 4
-                    // <Simca_> if largest field size and smallest field size are the size, there is of course no padding
+                    // <Simca_> if largest field size and smallest field size are the size,
+                    //          there is of course no padding
                     BaseStream.Position = recordPosition;
                     var recordIndex = idTable?[i] ?? minIndex + i;
                     LoadRecord(recordPosition, recordIndex);
@@ -261,7 +261,7 @@ namespace DBFilesClient.NET.WDB5
                     {
                         var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
                         Debug.Assert(marshalAttr != null, $"{typeof(T).Name}.{fieldInfo.Name} is an array but lacks MarshalAsAttribute!");
-                        if (isArray && marshalAttr.SizeConst != 0)
+                        if (marshalAttr.SizeConst != 0)
                             arraySize = Math.Min(arraySize, marshalAttr.SizeConst);
                     }
                     else // No padding in this case. Guessing array size is okay.

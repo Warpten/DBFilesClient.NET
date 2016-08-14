@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using DBFilesClient.NET.WDB5;
 
 namespace DBFilesClient.NET
 {
@@ -87,7 +86,7 @@ namespace DBFilesClient.NET
 
         protected Reader(Stream data) : base(data)
         {
-            Debug.Assert(data is MemoryStream);
+            Debug.Assert(data.CanSeek, "The provided DBC/DB2 data stream must be seekable!");
         }
 
         internal abstract void Load();
@@ -95,7 +94,8 @@ namespace DBFilesClient.NET
         // ReSharper disable once MemberCanBeProtected.Global
         public int ReadInt24()
         {
-            return ReadByte() | (ReadByte() << 8) | (ReadByte() << 16);
+            var bytes = ReadBytes(3);
+            return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16);
         }
 
         // ReSharper disable once UnusedMember.Global
