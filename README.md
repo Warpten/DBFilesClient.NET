@@ -125,6 +125,8 @@ Expected record count in the table below is calculated depending on field meta:
 
 We then add the amount of entries in the copy table.
 
+> This data dates from v1.0.0.2. Later versions do not introduce any kind of speed deterioration.
+
 ```
 File name                        Time to load        Record count   Expected   OK
 ---------------------------------------------------------------------------------
