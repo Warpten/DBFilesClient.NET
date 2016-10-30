@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using DBFilesClient.NET;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Tests.Structures;
 
 namespace Tests
 {
@@ -12,12 +13,12 @@ namespace Tests
     public class ReaderTest
     {
         [TestMethod]
-        public void TestDB5()
+        public void TestLoad()
         {
             Console.WriteLine("File name                        Average time to load     Minimum time       Maximum time       Record count");
             Console.WriteLine("------------------------------------------------------------------------------------------------------------");
 
-            foreach (var type in Assembly.GetAssembly(typeof (ReaderTest)).GetTypes())
+            foreach (var type in Assembly.GetAssembly(typeof(ReaderTest)).GetTypes())
             {
                 if (!type.IsClass)
                     continue;
@@ -31,7 +32,7 @@ namespace Tests
 
                 for (var i = 1; i <= 10; ++i)
                 {
-                    var instanceType = typeof (Storage<>).MakeGenericType(type);
+                    var instanceType = typeof(Storage<>).MakeGenericType(type);
 
                     var countGetter = instanceType.GetProperty("Count").GetGetMethod();
                     var stopwatch = Stopwatch.StartNew();
@@ -42,7 +43,7 @@ namespace Tests
                     times.Add(stopwatch.ElapsedTicks);
 
                     if (recordCount == 0)
-                        recordCount = (int) countGetter.Invoke(instance, new object[] {});
+                        recordCount = (int)countGetter.Invoke(instance, new object[] { });
                 }
 
                 Console.WriteLine("{0}{1}{2}{3}{4}",

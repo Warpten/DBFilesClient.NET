@@ -14,6 +14,8 @@ namespace DBFilesClient.NET
 
         private void FromStream(Stream dataStream)
         {
+            Debug.Assert(dataStream.CanSeek, "The provided data stream must support seek operations!");
+
             using (var binaryReader = new BinaryReader(dataStream))
             {
                 var signature = binaryReader.ReadInt32();

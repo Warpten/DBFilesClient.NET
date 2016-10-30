@@ -7,11 +7,12 @@ using System.Text;
 
 namespace DBFilesClient.NET
 {
-    internal abstract class Reader : BinaryReader
+    public abstract class Reader : BinaryReader
     {
         protected long StringTableOffset { private get; set; }
 
-        private static Dictionary<TypeCode, MethodInfo> _binaryReaderMethods = new Dictionary<TypeCode, MethodInfo>
+        // ReSharper disable once StaticMemberInGenericType
+        private static Dictionary<TypeCode, MethodInfo> _binaryReaderMethods { get; } = new Dictionary<TypeCode, MethodInfo>
         {
             { TypeCode.Int64, typeof (BinaryReader).GetMethod("ReadInt64", Type.EmptyTypes) },
             { TypeCode.Int32, typeof (BinaryReader).GetMethod("ReadInt32", Type.EmptyTypes) },
@@ -26,23 +27,28 @@ namespace DBFilesClient.NET
             { TypeCode.Char, typeof (BinaryReader).GetMethod("ReadChar", Type.EmptyTypes) },
             { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) },
 
-            { TypeCode.String, typeof (Reader).GetMethod("ReadTableString", Type.EmptyTypes) }
+            { TypeCode.String, typeof (Reader).GetMethod("ReadTableString", Type.EmptyTypes) },
         };
 
-        protected static MethodInfo GetPrimitiveLoader(Type type)
+        protected static MethodInfo GetPrimitiveLoader(Type typeInfo)
         {
-            while (type.IsArray)
-                type = type.GetElementType();
-
-            MethodInfo methodInfo;
-            _binaryReaderMethods.TryGetValue(Type.GetTypeCode(type), out methodInfo);
-            return methodInfo;
+            return _binaryReaderMethods[Type.GetTypeCode(typeInfo)];
         }
 
-        protected static MethodInfo GetPrimitiveLoader<T>() => GetPrimitiveLoader(typeof (T));
+        protected static MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo)
+        {
+            var fieldType = fieldInfo.FieldType;
+            if (fieldType.IsArray)
+                fieldType = fieldType.GetElementType();
 
-        protected static MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo) => GetPrimitiveLoader(fieldInfo.FieldType);
-        protected static MethodInfo GetPrimitiveLoader(PropertyInfo propertyInfo) => GetPrimitiveLoader(propertyInfo.PropertyType);
+            var typeCode = Type.GetTypeCode(fieldType);
+            if (typeCode == TypeCode.Object)
+                return null;
+
+            MethodInfo methodInfo;
+            _binaryReaderMethods.TryGetValue(typeCode, out methodInfo);
+            return methodInfo;
+        }
 
         // ReSharper disable once MemberCanBeProtected.Global
         public string ReadInlineString()
@@ -86,7 +92,7 @@ namespace DBFilesClient.NET
 
         protected Reader(Stream data) : base(data)
         {
-            Debug.Assert(data.CanSeek, "The provided DBC/DB2 data stream must be seekable!");
+            Debug.Assert(data.CanSeek, "The provided DBC/DB2 data stream must support seek operations!");
         }
 
         internal abstract void Load();

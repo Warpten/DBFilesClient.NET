@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using Sigil;
 
 namespace DBFilesClient.NET.WDB2
 {
@@ -15,10 +16,10 @@ namespace DBFilesClient.NET.WDB2
 
         internal override void Load()
         {
-            // We get to this through the Factory, meaning we already read the signature...
             var recordCount = ReadInt32();
             if (recordCount == 0)
                 return;
+
             BaseStream.Position += 4;
             var recordSize = ReadInt32();
             var stringTableSize = ReadInt32();
@@ -33,16 +34,12 @@ namespace DBFilesClient.NET.WDB2
 
             StringTableOffset = BaseStream.Length - stringTableSize;
 
-            var recordPosition = BaseStream.Position;
             for (var i = 0; i < recordCount; ++i)
             {
                 LoadRecord();
-                BaseStream.Position = recordPosition += recordSize;
+                BaseStream.Position += recordSize;
             }
         }
-
-        private delegate T LoaderDelegate(Reader<T> table);
-        private LoaderDelegate _loader;
 
         private void LoadRecord()
         {
@@ -51,27 +48,59 @@ namespace DBFilesClient.NET.WDB2
             TriggerRecordLoaded(key, _loader(this));
         }
 
-        private static LoaderDelegate GenerateRecordLoader()
+        private Func<Reader<T>, T> _loader;
+
+        private static Func<Reader<T>, T> GenerateRecordLoader()
         {
-            var emitter = Emit<LoaderDelegate>.NewDynamicMethod("LoaderDelegate", null, false);
-            var resultLocal = emitter.DeclareLocal<T>();
-            emitter.NewObject<T>();
-            emitter.StoreLocal(resultLocal);
+            var expressions = new List<Expression>();
+
+            // Create a parameter expression that holds the argument type.
+            var readerExpr = Expression.Parameter(typeof(WDBC.Reader<T>), "reader");
+
+            // Create a variable expression that holds the return type.
+            var resultExpr = Expression.Variable(typeof(T), typeof(T).Name + "Value");
+
+            // Instantiate the return value.
+            expressions.Add(Expression.Assign(resultExpr, Expression.New(typeof(T))));
 
             var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance);
             foreach (var fieldInfo in fields)
             {
                 var fieldType = fieldInfo.FieldType;
-                var isArray = fieldInfo.FieldType.IsArray;
-
-                var callVirt = GetPrimitiveLoader(fieldType);
-
-                if (!isArray)
+                if (fieldType.IsArray)
                 {
-                    emitter.LoadLocal(resultLocal);
-                    emitter.LoadArgument(0);
-                    emitter.CallVirtual(callVirt);
-                    emitter.StoreField(fieldInfo);
+                    fieldType = fieldType.GetElementType();
+                    Debug.Assert(!fieldType.IsArray, "Only unidimensional arrays are supported.");
+                }
+
+                var typeCode = Type.GetTypeCode(fieldType);
+
+                ConstructorInfo fieldObjectCtor = null;
+                if (typeCode == TypeCode.Object)
+                {
+                    fieldObjectCtor = fieldType.GetConstructor(new[] { fieldType.BaseType?.GetGenericArguments()[0] });
+                    if (fieldObjectCtor == null)
+                        throw new InvalidStructureException($"{fieldType.Name} requires a constructor.");
+                }
+
+                Expression callExpression;
+                if (typeCode != TypeCode.Object)
+                {
+                    var callVirt = GetPrimitiveLoader(fieldInfo);
+
+                    callExpression = Expression.Call(readerExpr, callVirt);
+                }
+                else
+                {
+                    // ReSharper disable once PossibleNullReferenceException
+                    var callVirt = GetPrimitiveLoader(fieldObjectCtor.GetParameters()[0].ParameterType);
+
+                    callExpression = Expression.New(fieldObjectCtor, Expression.Call(readerExpr, callVirt));
+                }
+
+                if (!fieldInfo.FieldType.IsArray)
+                {
+                    expressions.Add(Expression.Assign(Expression.MakeMemberAccess(resultExpr, fieldInfo), Expression.Convert(callExpression, fieldType)));
                 }
                 else
                 {
@@ -79,43 +108,34 @@ namespace DBFilesClient.NET.WDB2
                     if (marshalAttribute == null)
                         throw new InvalidStructureException($"Field {fieldInfo.Name} is an array but misses MarshalAsAttribute!");
 
-                    emitter.LoadLocal(resultLocal);
-                    emitter.LoadConstant(marshalAttribute.SizeConst);
-                    emitter.NewArray(fieldType.GetElementType());
-                    emitter.StoreField(fieldInfo);
+                    var exitLabelExpr = Expression.Label();
+                    var itrExpr = Expression.Variable(typeof(int), "itr");
+                    expressions.Add(Expression.Block(
+                        new[] { itrExpr },
+                        // ReSharper disable once AssignNullToNotNullAttribute
+                        Expression.Assign(
+                            Expression.MakeMemberAccess(resultExpr, fieldInfo),
+                            Expression.New(fieldInfo.FieldType.GetConstructor(new[] { typeof(int) }),
+                                Expression.Constant(marshalAttribute.SizeConst))
+                            ),
 
-                    var loopBodyLabel = emitter.DefineLabel();
-                    var loopConditionLabel = emitter.DefineLabel();
-
-                    using (var iterationLocal = emitter.DeclareLocal<int>())
-                    {
-                        emitter.LoadConstant(0);
-                        emitter.StoreLocal(iterationLocal);
-                        emitter.Branch(loopConditionLabel);
-                        emitter.MarkLabel(loopBodyLabel);
-                        emitter.LoadLocal(resultLocal);
-                        emitter.LoadField(fieldInfo);
-                        emitter.LoadLocal(iterationLocal);
-                        emitter.LoadArgument(0);
-                        emitter.CallVirtual(callVirt);
-                        emitter.StoreElement(fieldType.GetElementType());
-                        emitter.LoadLocal(iterationLocal);
-                        emitter.LoadConstant(1);
-                        emitter.Add();
-                        emitter.StoreLocal(iterationLocal);
-                        emitter.MarkLabel(loopConditionLabel);
-                        emitter.LoadLocal(iterationLocal);
-                        emitter.LoadConstant(marshalAttribute.SizeConst);
-                        emitter.CompareLessThan();
-                        emitter.BranchIfTrue(loopBodyLabel);
-                    }
+                        Expression.Assign(itrExpr, Expression.Constant(0)),
+                        Expression.Loop(
+                            Expression.IfThenElse(
+                                Expression.LessThan(itrExpr, Expression.Constant(marshalAttribute.SizeConst)),
+                                Expression.Assign(
+                                    Expression.ArrayAccess(Expression.MakeMemberAccess(resultExpr, fieldInfo),
+                                        Expression.PostIncrementAssign(itrExpr)),
+                                    Expression.Convert(callExpression, fieldType)),
+                                Expression.Break(exitLabelExpr)),
+                            exitLabelExpr)
+                        ));
                 }
             }
+            expressions.Add(resultExpr);
 
-            emitter.LoadLocal(resultLocal);
-            emitter.Return();
-
-            return emitter.CreateDelegate(OptimizationOptions.None);
+            var expressionBlock = Expression.Block(new[] { resultExpr }, expressions);
+            return Expression.Lambda<Func<Reader<T>, T>>(expressionBlock, readerExpr).Compile();
         }
     }
 }
