@@ -158,4 +158,4 @@ File specs for the various flavors of DB2 and DBC files can be found [here](http
 
 In no particuliar order:
 - #modcraft on QuakeNet.
-- Kevin Montrose for [Sigil](https://github.com/kevin-montrose/Sigil, up to version 1.0.0.2).
+- Kevin Montrose for [Sigil](https://github.com/kevin-montrose/Sigil) (up to version 1.0.0.2).
