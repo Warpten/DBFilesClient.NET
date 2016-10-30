@@ -27,6 +27,8 @@ namespace DBFilesClient.NET.WDB2
             var minIndex = ReadInt32();
             var maxIndex = ReadInt32();
 
+            FileHeader.HasStringTable = stringTableSize != 0;
+
             // Generate the record loader function now.
             _loader = GenerateRecordLoader();
 

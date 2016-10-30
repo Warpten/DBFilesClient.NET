@@ -7,8 +7,14 @@ namespace DBFilesClient.NET
 {
     public class Storage<T> : Dictionary<int, T>, IStorage where T : class, new()
     {
+        #region Header
         public Type RecordType => typeof(T);
         public int Signature { get; set; }
+
+        public bool HasIndexTable { get; set; }
+        public bool HasStringTable { get; set; }
+        public ushort IndexField { get; set; }
+        #endregion
 
         public Storage(Stream fileStream)
         {
@@ -41,6 +47,10 @@ namespace DBFilesClient.NET
 
                 baseReader.OnRecordLoaded += (index, record) => this[index] = (T)record;
                 baseReader.Load();
+
+                HasIndexTable = baseReader.FileHeader.HasIndexTable;
+                HasStringTable = baseReader.FileHeader.HasStringTable;
+                IndexField = baseReader.FileHeader.IndexField;
             }
         }
 

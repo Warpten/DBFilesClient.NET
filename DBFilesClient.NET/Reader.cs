@@ -9,6 +9,15 @@ namespace DBFilesClient.NET
 {
     public abstract class Reader : BinaryReader
     {
+        internal class Header
+        {
+            public bool HasStringTable { get; set; } = false;
+            public bool HasIndexTable { get; set; } = false;
+            public ushort IndexField { get; set; } = 0;
+        }
+
+        internal Header FileHeader { get; } = new Header();
+
         protected long StringTableOffset { private get; set; }
 
         // ReSharper disable once StaticMemberInGenericType

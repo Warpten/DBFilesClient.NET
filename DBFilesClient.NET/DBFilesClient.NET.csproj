@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IStorage.cs" />
     <Compile Include="Types\IObjectType.cs" />
     <Compile Include="WDB2\Reader.cs" />
     <Compile Include="WDB5\Reader.cs" />

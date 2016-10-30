@@ -24,6 +24,8 @@ namespace DBFilesClient.NET.WDBC
             var recordSize = ReadInt32();
             var stringBlockSize = ReadInt32();
 
+            FileHeader.HasStringTable = stringBlockSize != 0;
+
             StringTableOffset = BaseStream.Length - stringBlockSize;
 
             // Generate the record loader function now.

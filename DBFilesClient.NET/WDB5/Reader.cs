@@ -11,24 +11,11 @@ namespace DBFilesClient.NET.WDB5
 {
     internal sealed class Reader<T> : Reader where T : class, new()
     {
-        private class FileHeader
-        {
-            public int RecordSize { get; set; }
-            public int RecordCount { get; set; }
-            public ushort Flags { private get; set; }
-            public ushort IndexField { get; set; }
-
-            public FieldEntry[] FieldMeta { get; set; }
-
-            public bool HasIndexTable => (Flags & 0x04) != 0;
-            public bool HasStringTable => (Flags & 0x01) == 0;
-
-            private const int HeaderSize = 0x30;
-
-            public int RecordOffset => HeaderSize + FieldMeta.Length * (2 + 2);
-        }
-
-        private FileHeader Header { get; } = new FileHeader();
+        #region Header
+        private int RecordCount { get; set; }
+        private int RecordSize { get; set; }
+        private FieldEntry[] FieldMeta { get; set; }
+        #endregion
 
         // ReSharper disable StaticMemberInGenericType
         private static MethodInfo _readInt24 = typeof (Reader).GetMethod("ReadInt24", Type.EmptyTypes);
@@ -37,7 +24,7 @@ namespace DBFilesClient.NET.WDB5
 
         private MethodInfo GetPrimitiveLoader(Type fieldType, int fieldIndex)
         {
-            var fieldData = Header.FieldMeta[fieldIndex];
+            var fieldData = FieldMeta[fieldIndex];
             if (fieldType.IsArray)
                 fieldType = fieldType.GetElementType();
 
@@ -67,7 +54,7 @@ namespace DBFilesClient.NET.WDB5
 
         private MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
         {
-            var fieldData = Header.FieldMeta[fieldIndex];
+            var fieldData = FieldMeta[fieldIndex];
 
             var fieldType = fieldInfo.FieldType;
             if (fieldType.IsArray)
@@ -104,7 +91,7 @@ namespace DBFilesClient.NET.WDB5
 
         public override string ReadTableString()
         {
-            return !Header.HasStringTable ? ReadInlineString() : base.ReadTableString();
+            return !FileHeader.HasStringTable ? ReadInlineString() : base.ReadTableString();
         }
 
         internal Reader(Stream fileData) : base(fileData)
@@ -113,29 +100,32 @@ namespace DBFilesClient.NET.WDB5
 
         internal override void Load()
         {
-            Header.RecordCount = ReadInt32();
-            if (Header.RecordCount == 0)
+            RecordCount = ReadInt32();
+            if (RecordCount == 0)
                 return;
 
-            Header.FieldMeta = new FieldEntry[ReadInt32()];
-            Header.RecordSize = ReadInt32();
+            FieldMeta = new FieldEntry[ReadInt32()];
+            RecordSize = ReadInt32();
             BaseStream.Position += 4 + 4 + 4;
             var minIndex = ReadInt32();
             var maxIndex = ReadInt32();
             BaseStream.Position += 4;
             var copyTableSize = ReadInt32();
-            Header.Flags = ReadUInt16();
-            Header.IndexField = ReadUInt16();
+            var flags = ReadUInt16();
+            FileHeader.IndexField = ReadUInt16();
 
-            for (var i = 0; i < Header.FieldMeta.Length; ++i)
+            FileHeader.HasIndexTable = (flags & 0x04) != 0;
+            FileHeader.HasStringTable = (flags & 0x01) == 0;
+
+            for (var i = 0; i < FieldMeta.Length; ++i)
             {
                 // ReSharper disable once UseObjectOrCollectionInitializer
-                Header.FieldMeta[i] = new FieldEntry();
-                Header.FieldMeta[i].UnusedBits = ReadInt16();
-                Header.FieldMeta[i].Position = ReadUInt16();
+                FieldMeta[i] = new FieldEntry();
+                FieldMeta[i].UnusedBits = ReadInt16();
+                FieldMeta[i].Position = ReadUInt16();
             }
 
-            StringTableOffset = Header.RecordOffset + Header.RecordSize * Header.RecordCount;
+            StringTableOffset = 0x30 + FieldMeta.Length * (2 + 2);
 
             // Field metadata is loaded, generate the record loader function now.
             _loader = GenerateRecordLoader();
@@ -146,20 +136,20 @@ namespace DBFilesClient.NET.WDB5
             copyTableSize /= 8; // Simpler for later.
 
             int[] idTable = null;
-            if (Header.HasIndexTable)
+            if (FileHeader.HasIndexTable)
             {
-                BaseStream.Position = copyTablePosition - Header.RecordCount * 4;
+                BaseStream.Position = copyTablePosition - RecordCount * 4;
 
-                idTable = new int[Header.RecordCount];
-                for (var i = 0; i < Header.RecordCount; ++i)
+                idTable = new int[RecordCount];
+                for (var i = 0; i < RecordCount; ++i)
                     idTable[i] = ReadInt32();
             }
 
             var offsetMap = new Dictionary<int /* recordIndex */, long /* absoluteOffset */>();
 
-            if (Header.HasStringTable)
+            if (FileHeader.HasStringTable)
             {
-                for (var i = 0; i < Header.RecordCount; ++i)
+                for (var i = 0; i < RecordCount; ++i)
                 {
                     // <Simca_> records are padded to largest field size, 35 is padded
                     //          to 36 because 35 isn't divisible by 4
@@ -170,7 +160,7 @@ namespace DBFilesClient.NET.WDB5
                     LoadRecord(recordPosition, recordIndex);
 
                     offsetMap[recordIndex] = recordPosition;
-                    recordPosition += Header.RecordSize;
+                    recordPosition += RecordSize;
                 }
             }
             else
@@ -178,8 +168,8 @@ namespace DBFilesClient.NET.WDB5
                 var offsetCount = maxIndex - minIndex + 1;
 
                 BaseStream.Position = copyTablePosition - offsetCount * (4 + 2);
-                if (Header.HasIndexTable) // Account for index table
-                    BaseStream.Position -= Header.RecordCount * 4;
+                if (FileHeader.HasIndexTable) // Account for index table
+                    BaseStream.Position -= RecordCount * 4;
 
                 for (var i = 0; i < maxIndex - minIndex + 1; ++i)
                 {
@@ -205,15 +195,15 @@ namespace DBFilesClient.NET.WDB5
                 var oldIndex = ReadInt32();
                 
                 // Write the new index into the underlying buffer.
-                if (!Header.HasIndexTable)
+                if (!FileHeader.HasIndexTable)
                 {
                     var baseMemoryStream = (MemoryStream)BaseStream;
-                    if (Header.FieldMeta[Header.IndexField].ByteSize != 4)
+                    if (FieldMeta[FileHeader.IndexField].ByteSize != 4)
                         throw new InvalidOperationException();
 
                     var underlyingBuffer = baseMemoryStream.GetBuffer();
-                    var position = offsetMap[oldIndex] + Header.FieldMeta[Header.IndexField].Position;
-                    for (var k = 0; k < Header.FieldMeta[Header.IndexField].ByteSize; ++k)
+                    var position = offsetMap[oldIndex] + FieldMeta[FileHeader.IndexField].Position;
+                    for (var k = 0; k < FieldMeta[FileHeader.IndexField].ByteSize; ++k)
                         underlyingBuffer[k + position] = (byte)((newIndex >> (8 * k)) & 0xFF);
                 }
 
@@ -239,13 +229,13 @@ namespace DBFilesClient.NET.WDB5
         {
             var record = _loader(this);
 
-            if (Header.HasIndexTable || forceKey)
+            if (FileHeader.HasIndexTable || forceKey)
                 TriggerRecordLoaded(key, record);
             else
             {
-                BaseStream.Position = recordPosition + Header.FieldMeta[Header.IndexField].Position;
+                BaseStream.Position = recordPosition + FieldMeta[FileHeader.IndexField].Position;
                 // ReSharper disable once SwitchStatementMissingSomeCases
-                switch (Header.FieldMeta[Header.IndexField].ByteSize)
+                switch (FieldMeta[FileHeader.IndexField].ByteSize)
                 {
                     case 4:
                         TriggerRecordLoaded(ReadInt32(), record);
@@ -283,7 +273,7 @@ namespace DBFilesClient.NET.WDB5
             var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance);
             foreach (var fieldInfo in fields)
             {
-                var currentField = Header.FieldMeta[fieldIndex];
+                var currentField = FieldMeta[fieldIndex];
                 var fieldType = fieldInfo.FieldType;
 
                 if (fieldType.IsArray)
@@ -293,12 +283,12 @@ namespace DBFilesClient.NET.WDB5
                 }
 
                 var arraySize = 1;
-                if (fieldIndex + 1 < Header.FieldMeta.Length)
-                    arraySize = (Header.FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
+                if (fieldIndex + 1 < FieldMeta.Length)
+                    arraySize = (FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
                 else if (fieldInfo.FieldType.IsArray)
                 {
-                    var largestFieldSize = Header.FieldMeta.Max(k => k.ByteSize);
-                    var smallestFieldSize = Header.FieldMeta.Min(k => k.ByteSize);
+                    var largestFieldSize = FieldMeta.Max(k => k.ByteSize);
+                    var smallestFieldSize = FieldMeta.Min(k => k.ByteSize);
 
                     if (smallestFieldSize != largestFieldSize)
                     {
@@ -308,10 +298,10 @@ namespace DBFilesClient.NET.WDB5
                             arraySize = Math.Min(arraySize, marshalAttr.SizeConst);
                     }
                     else // No padding in this case. Guessing array size is okay.
-                        arraySize = (Header.RecordSize - currentField.Position) / currentField.ByteSize;
+                        arraySize = (RecordSize - currentField.Position) / currentField.ByteSize;
                 }
 
-                if (!Header.HasIndexTable && fieldIndex == Header.IndexField)
+                if (!FileHeader.HasIndexTable && fieldIndex == FileHeader.IndexField)
                     arraySize = 1;
 
                 var typeCode = Type.GetTypeCode(fieldType);
@@ -385,7 +375,7 @@ namespace DBFilesClient.NET.WDB5
             return Expression.Lambda<Func<Reader<T>, T>>(expressionBlock, readerExpr).Compile();
         }
 
-        private class FieldEntry
+        internal class FieldEntry
         {
             public short UnusedBits { private get; set; }
             public ushort Position { get; set; }
