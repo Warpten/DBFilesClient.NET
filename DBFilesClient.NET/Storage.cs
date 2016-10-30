@@ -5,8 +5,11 @@ using System.IO;
 
 namespace DBFilesClient.NET
 {
-    public class Storage<T> : Dictionary<int, T> where T : class, new()
+    public class Storage<T> : Dictionary<int, T>, IStorage where T : class, new()
     {
+        public Type RecordType => typeof(T);
+        public int Signature { get; set; }
+
         public Storage(Stream fileStream)
         {
             FromStream(fileStream);
@@ -18,10 +21,10 @@ namespace DBFilesClient.NET
 
             using (var binaryReader = new BinaryReader(dataStream))
             {
-                var signature = binaryReader.ReadInt32();
+                Signature = binaryReader.ReadInt32();
 
                 Reader baseReader;
-                switch (signature)
+                switch (Signature)
                 {
                     case 0x35424457:
                         baseReader = new WDB5.Reader<T>(dataStream);
@@ -33,7 +36,7 @@ namespace DBFilesClient.NET
                         baseReader = new WDBC.Reader<T>(dataStream);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(signature.ToString("X"));
+                        throw new ArgumentOutOfRangeException(Signature.ToString("X"));
                 }
 
                 baseReader.OnRecordLoaded += (index, record) => this[index] = (T)record;
@@ -51,6 +54,6 @@ namespace DBFilesClient.NET
                 using (var memoryStream = new MemoryStream(fileBytes))
                     FromStream(memoryStream);
             }
-        } 
+        }
     }
 }
