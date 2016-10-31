@@ -125,7 +125,7 @@ namespace DBFilesClient.NET.WDB5
                 FieldMeta[i].Position = ReadUInt16();
             }
 
-            StringTableOffset = 0x30 + FieldMeta.Length * (2 + 2);
+            StringTableOffset = 0x30 + FieldMeta.Length * (2 + 2) + RecordSize * RecordCount;
 
             // Field metadata is loaded, generate the record loader function now.
             _loader = GenerateRecordLoader();

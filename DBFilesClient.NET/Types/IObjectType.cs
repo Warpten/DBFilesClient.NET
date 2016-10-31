@@ -23,5 +23,7 @@
         }
 
         public T Key { get; private set; }
+
+        public override string ToString() => Key.ToString();
     }
 }
