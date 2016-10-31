@@ -95,9 +95,10 @@ namespace DBFilesClient.NET.WDB2
                 else
                 {
                     // ReSharper disable once PossibleNullReferenceException
-                    var callVirt = GetPrimitiveLoader(fieldObjectCtor.GetParameters()[0].ParameterType);
+                    var wrappedType = fieldObjectCtor.GetParameters()[0].ParameterType;
+                    var callVirt = GetPrimitiveLoader(wrappedType);
 
-                    callExpression = Expression.New(fieldObjectCtor, Expression.Call(readerExpr, callVirt));
+                    callExpression = Expression.New(fieldObjectCtor, Expression.Convert(Expression.Call(readerExpr, callVirt), wrappedType));
                 }
 
                 if (!fieldInfo.FieldType.IsArray)
