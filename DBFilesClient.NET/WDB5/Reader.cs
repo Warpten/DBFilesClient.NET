@@ -279,7 +279,8 @@ namespace DBFilesClient.NET.WDB5
                 if (fieldType.IsArray)
                 {
                     fieldType = fieldType.GetElementType();
-                    Debug.Assert(!fieldType.IsArray, "Only unidimensional arrays are supported.");
+                    if (fieldType.IsArray)
+                        throw new InvalidStructureException("Only unidimensional arrays are supported.");
                 }
 
                 var arraySize = 1;
@@ -293,9 +294,10 @@ namespace DBFilesClient.NET.WDB5
                     if (smallestFieldSize != largestFieldSize)
                     {
                         var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
-                        Debug.Assert(marshalAttr != null, $"{typeof(T).Name}.{fieldInfo.Name}'s size can't be guessed!");
+                        if (marshalAttr == null)
+                            throw new InvalidStructureException($"{typeof(T).Name}.{fieldInfo.Name}'s size can't be guessed!");
                         if (marshalAttr.SizeConst != 0)
-                            arraySize = Math.Min(arraySize, marshalAttr.SizeConst);
+                            arraySize = marshalAttr.SizeConst;
                     }
                     else // No padding in this case. Guessing array size is okay.
                         arraySize = (RecordSize - currentField.Position) / currentField.ByteSize;

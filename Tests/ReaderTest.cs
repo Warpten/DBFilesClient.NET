@@ -27,6 +27,9 @@ namespace Tests
                 if (attr == null)
                     continue;
 
+                if (attr.FileName != "Spell")
+                    continue;
+
                 var times = new List<long>();
                 var recordCount = 0;
 
