@@ -68,10 +68,9 @@ namespace DBFilesClient.NET
                 ++stringLength;
             BaseStream.Position = stringStart;
 
-            if (stringLength == 0)
-                return string.Empty;
-
-            var stringValue = Encoding.UTF8.GetString(ReadBytes(stringLength));
+            var stringValue = string.Empty;
+            if (stringLength != 0)
+                stringValue = Encoding.UTF8.GetString(ReadBytes(stringLength));
             ReadByte();
 
             return stringValue;
