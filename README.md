@@ -1,4 +1,4 @@
-# DBFilesClient.NET [![NuGet](https://img.shields.io/nuget/v/Nuget.Core.svg)](https://nuget.org/packages/DBFilesClient.NET/)
+# DBFilesClient.NET [![NuGet version](https://badge.fury.io/nu/DBFilesClient.NET.svg)](https://badge.fury.io/nu/DBFilesClient.NET)
 A blazing-fast "new" DBC/DB2 reader for World of Warcraft.
 Name is totally not stolen from [LordJZ's library](http://github.com/LordJZ/DBFilesClient.NET).
 
