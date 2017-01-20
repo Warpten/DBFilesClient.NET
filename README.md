@@ -125,7 +125,7 @@ Expected record count in the table below is calculated depending on field meta:
 
 We then add the amount of entries in the copy table.
 
-> This data dates from v1.0.0.2. Later versions do not introduce any kind of speed deterioration.
+> Speed measurements as of commit f3d097706200a8f50b2236d3f68877e310e1f141
 
 ```
 File name                        Average time to load     Minimum time       Maximum time       Record count
