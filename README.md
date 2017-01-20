@@ -128,26 +128,26 @@ We then add the amount of entries in the copy table.
 > This data dates from v1.0.0.2. Later versions do not introduce any kind of speed deterioration.
 
 ```
-File name                        Time to load        Record count   Expected   OK
----------------------------------------------------------------------------------
-Spell                            00:00:00.8905325    158280         158280     OK
-SpellEffect                      00:00:00.6427693    235970         235970     OK
-Item-sparse                      00:00:00.7340361    93432          93432      OK
-SoundKit                         00:00:00.2466342    66871          66871      OK
-ItemSearchName                   00:00:00.2603996    76339          76339      OK
-CreatureDisplayInfo              00:00:00.1517513    62121          62121      OK
-SpellXSpellVisual                00:00:00.1608694    97038          97038      OK
-CriteriaTree                     00:00:00.1630648    42868          42868      OK
-TaxiPathNode                     00:00:00.1258343    69861          69861      OK
-WMOAreaTable                     00:00:00.1784469    37874          37874      OK
-ItemModifiedAppearance           00:00:00.1325420    79573          79573      OK
-SpellMisc                        00:00:00.3252460    159202         159202     OK
-SpellInterrupts                  00:00:00.1456599    46785          46785      OK
-ItemSpecOverride                 00:00:00.0775243    55581          55581      OK
-SpellCategories                  00:00:00.0764223    39087          39087      OK
-Item                             00:00:00.1168999    117277         117277     OK
-SpellCastTimes                   00:00:00.0548959    129            129        OK
-SpellItemEnchantmentCondition    00:00:00.0564202    0              0          OK
+File name                        Average time to load     Minimum time       Maximum time       Record count
+------------------------------------------------------------------------------------------------------------
+CreatureDisplayInfo              00:00:00.0254500         00:00:00.0187491   00:00:00.0368231   62608
+CriteriaTree                     00:00:00.0203885         00:00:00.0119250   00:00:00.0289922   43746
+Item                             00:00:00.0155547         00:00:00.0121462   00:00:00.0249945   118770
+ItemModifiedAppearance           00:00:00.0152652         00:00:00.0072048   00:00:00.0218214   79494
+ItemSearchName                   00:00:00.0470748         00:00:00.0370949   00:00:00.0605512   77309
+Item-sparse                      00:00:00.1563485         00:00:00.1467743   00:00:00.1667554   94843
+ItemSpecOverride                 00:00:00.0038236         00:00:00.0022122   00:00:00.0122970   36656
+SoundKit                         00:00:00.0422319         00:00:00.0309875   00:00:00.0479300   69770
+SpellCastTimes                   00:00:00.0000941         00:00:00.0000809   00:00:00.0001874   131
+SpellCategories                  00:00:00.0101107         00:00:00.0040866   00:00:00.0213984   39917
+SpellEffect                      00:00:00.2042076         00:00:00.1916380   00:00:00.2202517   241443
+Spell                            00:00:00.1686459         00:00:00.1529934   00:00:00.2087546   161626
+SpellInterrupts                  00:00:00.0139325         00:00:00.0071885   00:00:00.0253924   47680
+SpellItemEnchantmentCondition    00:00:00.0000229         00:00:00.0000157   00:00:00.0000785   0
+SpellMisc                        00:00:00.0602413         00:00:00.0479208   00:00:00.0774596   162447
+SpellXSpellVisual                00:00:00.0181881         00:00:00.0128776   00:00:00.0328005   99374
+TaxiPathNode                     00:00:00.0215235         00:00:00.0157172   00:00:00.0290410   70052
+WMOAreaTable                     00:00:00.0129732         00:00:00.0076368   00:00:00.0204752   38163
 ```
 
 ## Reference

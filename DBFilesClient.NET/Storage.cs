@@ -23,34 +23,32 @@ namespace DBFilesClient.NET
 
         private void FromStream(Stream dataStream)
         {
-            Debug.Assert(dataStream.CanSeek, "The provided data stream must support seek operations!");
-
             using (var binaryReader = new BinaryReader(dataStream))
             {
                 Signature = binaryReader.ReadInt32();
 
-                Reader baseReader;
+                Reader<T> fileReader;
                 switch (Signature)
                 {
                     case 0x35424457:
-                        baseReader = new WDB5.Reader<T>(dataStream);
+                        fileReader = new WDB5.Reader<T>(dataStream);
                         break;
                     case 0x32424457:
-                        baseReader = new WDB2.Reader<T>(dataStream);
+                        fileReader = new WDB2.Reader<T>(dataStream);
                         break;
                     case 0x43424457:
-                        baseReader = new WDBC.Reader<T>(dataStream);
+                        fileReader = new WDBC.Reader<T>(dataStream);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(Signature.ToString("X"));
                 }
 
-                baseReader.OnRecordLoaded += (index, record) => this[index] = (T)record;
-                baseReader.Load();
+                fileReader.OnRecordLoaded += (index, record) => this[index] = (T)record;
+                fileReader.Load();
 
-                HasIndexTable = baseReader.FileHeader.HasIndexTable;
-                HasStringTable = baseReader.FileHeader.HasStringTable;
-                IndexField = baseReader.FileHeader.IndexField;
+                HasIndexTable = fileReader.FileHeader.HasIndexTable;
+                HasStringTable = fileReader.FileHeader.HasStringTable;
+                IndexField = fileReader.FileHeader.IndexField;
             }
         }
 

@@ -6,10 +6,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using DBFilesClient.NET.Types;
 
 namespace DBFilesClient.NET.WDB5
 {
-    internal sealed class Reader<T> : Reader where T : class, new()
+    internal sealed class Reader<T> : NET.Reader<T> where T : class, new()
     {
         #region Header
         private int RecordCount { get; set; }
@@ -18,11 +19,11 @@ namespace DBFilesClient.NET.WDB5
         #endregion
 
         // ReSharper disable StaticMemberInGenericType
-        private static MethodInfo _readInt24 = typeof (Reader).GetMethod("ReadInt24", Type.EmptyTypes);
-        private static MethodInfo _readUInt24 = typeof (Reader).GetMethod("ReadUInt24", Type.EmptyTypes);
+        private MethodInfo _readInt24 = typeof (Reader<T>).GetMethod("ReadInt24", Type.EmptyTypes);
+        private MethodInfo _readUInt24 = typeof (Reader<T>).GetMethod("ReadUInt24", Type.EmptyTypes);
         // ReSharper restore StaticMemberInGenericType
 
-        private MethodInfo GetPrimitiveLoader(Type fieldType, int fieldIndex)
+        protected override MethodInfo GetPrimitiveLoader(Type fieldType, int fieldIndex)
         {
             var fieldData = FieldMeta[fieldIndex];
             if (fieldType.IsArray)
@@ -35,24 +36,24 @@ namespace DBFilesClient.NET.WDB5
                 switch (fieldData.ByteSize)
                 {
                     case 4:
-                        return GetPrimitiveLoader(fieldType);
+                        return base.GetPrimitiveLoader(fieldType, fieldIndex);
                     case 3:
                         return typeCode == TypeCode.Int32 ? _readInt24 : _readUInt24;
                     case 2:
                         return typeCode == TypeCode.Int32
-                            ? GetPrimitiveLoader(typeof(short))
-                            : GetPrimitiveLoader(typeof(ushort));
+                            ? base.GetPrimitiveLoader(typeof(short), fieldIndex)
+                            : base.GetPrimitiveLoader(typeof(ushort), fieldIndex);
                     case 1:
                         return typeCode == TypeCode.Int32
-                            ? GetPrimitiveLoader(typeof(sbyte))
-                            : GetPrimitiveLoader(typeof(byte));
+                            ? base.GetPrimitiveLoader(typeof(sbyte), fieldIndex)
+                            : base.GetPrimitiveLoader(typeof(byte), fieldIndex);
                 }
             }
 
-            return GetPrimitiveLoader(fieldType);
+            return GetPrimitiveLoader(fieldType, fieldIndex);
         }
 
-        private MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
+        protected override MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
         {
             var fieldData = FieldMeta[fieldIndex];
 
@@ -70,23 +71,23 @@ namespace DBFilesClient.NET.WDB5
                 switch (fieldData.ByteSize)
                 {
                     case 4:
-                        return GetPrimitiveLoader(fieldType);
+                        return base.GetPrimitiveLoader(fieldType, fieldIndex);
                     case 3:
                         return typeCode == TypeCode.Int32 ? _readInt24 : _readUInt24;
                     case 2:
                         return typeCode == TypeCode.Int32
-                            ? GetPrimitiveLoader(typeof (short))
-                            : GetPrimitiveLoader(typeof (ushort));
+                            ? base.GetPrimitiveLoader(typeof (short), fieldIndex)
+                            : base.GetPrimitiveLoader(typeof (ushort), fieldIndex);
                     case 1:
                         return typeCode == TypeCode.Int32
-                            ? GetPrimitiveLoader(typeof (sbyte))
-                            : GetPrimitiveLoader(typeof (byte));
+                            ? base.GetPrimitiveLoader(typeof (sbyte), fieldIndex)
+                            : base.GetPrimitiveLoader(typeof (byte), fieldIndex);
                     default:
                         throw new ArgumentOutOfRangeException($"Field {fieldInfo.Name} has its metadata expose as an unsupported {fieldData.ByteSize}-bytes field!");
                 }
             }
 
-            return GetPrimitiveLoader(fieldInfo);
+            return base.GetPrimitiveLoader(fieldInfo, fieldIndex);
         }
 
         public override string ReadTableString()
@@ -255,130 +256,35 @@ namespace DBFilesClient.NET.WDB5
 
         private Func<Reader<T>, T> _loader;
 
-        private Func<Reader<T>, T> GenerateRecordLoader()
+        protected override int GetArraySize(FieldInfo fieldInfo, int fieldIndex)
         {
-            var expressions = new List<Expression>();
+            var currentField = FieldMeta[fieldIndex];
 
-            // Create a parameter expression that holds the argument type.
-            var readerExpr = Expression.Parameter(typeof(Reader<T>), "reader");
-
-            // Create a variable expression that holds the return type.
-            var resultExpr = Expression.Variable(typeof(T), typeof(T).Name + "Value");
-
-            // Instantiate the return value.
-            expressions.Add(Expression.Assign(resultExpr, Expression.New(typeof(T))));
-
-            var fieldIndex = 0;
-
-            var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var fieldInfo in fields)
+            var arraySize = 1;
+            if (fieldIndex + 1 < FieldMeta.Length)
+                arraySize = (FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
+            else if (fieldInfo.FieldType.IsArray)
             {
-                var currentField = FieldMeta[fieldIndex];
-                var fieldType = fieldInfo.FieldType;
+                var largestFieldSize = FieldMeta.Max(k => k.ByteSize);
+                var smallestFieldSize = FieldMeta.Min(k => k.ByteSize);
 
-                if (fieldType.IsArray)
+                if (smallestFieldSize != largestFieldSize)
                 {
-                    fieldType = fieldType.GetElementType();
-                    if (fieldType.IsArray)
-                        throw new InvalidStructureException("Only unidimensional arrays are supported.");
+                    var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+                    if (marshalAttr == null)
+                        throw new InvalidStructureException($"{typeof(T).Name}.{fieldInfo.Name}'s size can't be guessed!");
+
+                    if (marshalAttr.SizeConst != 0)
+                        arraySize = marshalAttr.SizeConst;
                 }
-
-                var arraySize = 1;
-                if (fieldIndex + 1 < FieldMeta.Length)
-                    arraySize = (FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
-                else if (fieldInfo.FieldType.IsArray)
-                {
-                    var largestFieldSize = FieldMeta.Max(k => k.ByteSize);
-                    var smallestFieldSize = FieldMeta.Min(k => k.ByteSize);
-
-                    if (smallestFieldSize != largestFieldSize)
-                    {
-                        var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
-                        if (marshalAttr == null)
-                            throw new InvalidStructureException($"{typeof(T).Name}.{fieldInfo.Name}'s size can't be guessed!");
-                        if (marshalAttr.SizeConst != 0)
-                            arraySize = marshalAttr.SizeConst;
-                    }
-                    else // No padding in this case. Guessing array size is okay.
-                        arraySize = (RecordSize - currentField.Position) / currentField.ByteSize;
-                }
-
-                if (!FileHeader.HasIndexTable && fieldIndex == FileHeader.IndexField)
-                    arraySize = 1;
-
-                var typeCode = Type.GetTypeCode(fieldType);
-
-                ConstructorInfo fieldObjectCtor = null;
-                if (typeCode == TypeCode.Object)
-                {
-                    fieldObjectCtor = fieldType.GetConstructor(new[] {fieldType.BaseType?.GetGenericArguments()[0]});
-                    if (fieldObjectCtor == null)
-                        throw new InvalidStructureException($"{fieldType.Name} requires a constructor.");
-                }
-
-                Expression callExpression;
-                if (typeCode != TypeCode.Object)
-                {
-                    var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex);
-
-                    callExpression = Expression.Call(readerExpr, callVirt);
-                }
-                else
-                {
-                    // ReSharper disable once PossibleNullReferenceException
-                    var wrappedType = fieldObjectCtor.GetParameters()[0].ParameterType;
-                    var callVirt = GetPrimitiveLoader(wrappedType, fieldIndex);
-
-                    callExpression = Expression.New(fieldObjectCtor, Expression.Convert(Expression.Call(readerExpr, callVirt), wrappedType));
-                }
-
-                if (!fieldInfo.FieldType.IsArray)
-                {
-                    if (arraySize != 1)
-                        throw new InvalidStructureException(
-                            $"Field {typeof(T).Name}.{fieldInfo.Name} is an array but is declared as non-array.");
-
-                    expressions.Add(Expression.Assign(Expression.MakeMemberAccess(resultExpr, fieldInfo), Expression.Convert(callExpression, fieldType)));
-                }
-                else
-                {
-                    if (arraySize == 1)
-                        throw new InvalidStructureException(
-                            $"Field {typeof(T).Name}.{fieldInfo.Name} is not an array but is declared as an array.");
-
-                    var exitLabelExpr = Expression.Label();
-                    var itrExpr = Expression.Variable(typeof (int), "itr");
-                    expressions.Add(Expression.Block(
-                        new[] { itrExpr },
-                        // ReSharper disable once AssignNullToNotNullAttribute
-                        Expression.Assign(
-                            Expression.MakeMemberAccess(resultExpr, fieldInfo),
-                            Expression.New(fieldInfo.FieldType.GetConstructor(new[] {typeof (int)}),
-                                Expression.Constant(arraySize))
-                            ),
-
-                        Expression.Assign(itrExpr, Expression.Constant(0)),
-                        Expression.Loop(
-                            Expression.IfThenElse(
-                                Expression.LessThan(itrExpr, Expression.Constant(arraySize)),
-                                Expression.Assign(
-                                    Expression.ArrayAccess(Expression.MakeMemberAccess(resultExpr, fieldInfo),
-                                        Expression.PostIncrementAssign(itrExpr)),
-                                    Expression.Convert(callExpression, fieldType)),
-                                Expression.Break(exitLabelExpr)),
-                            exitLabelExpr)
-                        ));
-                }
-
-                ++fieldIndex;
+                else // No padding in this case. Guessing array size is okay.
+                    arraySize = (RecordSize - currentField.Position) / currentField.ByteSize;
             }
-            expressions.Add(resultExpr);
 
-            var expressionBlock = Expression.Block(new[] { resultExpr }, expressions);
-            return Expression.Lambda<Func<Reader<T>, T>>(expressionBlock, readerExpr).Compile();
+            return arraySize;
         }
 
-        internal class FieldEntry
+        private class FieldEntry
         {
             public short UnusedBits { private get; set; }
             public ushort Position { get; set; }

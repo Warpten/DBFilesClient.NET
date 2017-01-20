@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using DBFilesClient.NET;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Tests.Structures;
 
 namespace Tests
 {
@@ -27,12 +26,11 @@ namespace Tests
                 if (attr == null)
                     continue;
 
-                if (attr.FileName != "Spell")
-                    continue;
+                // if (attr.FileName != "SpellEffect")
+                //     continue;
 
                 var times = new List<long>();
                 var recordCount = 0;
-
                 for (var i = 1; i <= 10; ++i)
                 {
                     var instanceType = typeof(Storage<>).MakeGenericType(type);
@@ -40,7 +38,7 @@ namespace Tests
                     var countGetter = instanceType.GetProperty("Count").GetGetMethod();
                     var stopwatch = Stopwatch.StartNew();
                     var instance = Activator.CreateInstance(instanceType,
-                        $@"D:\DataDir\22045\dbc\frFR\{attr.FileName}.db2");
+                        $@"D:\DataDir\22566\dbc\frFR\{attr.FileName}.db2");
                     stopwatch.Stop();
 
                     times.Add(stopwatch.ElapsedTicks);

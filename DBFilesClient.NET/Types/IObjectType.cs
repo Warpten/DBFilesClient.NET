@@ -22,7 +22,7 @@
             Key = underlyingValue;
         }
 
-        public T Key { get; private set; }
+        public virtual T Key { get; protected set; }
 
         public override string ToString() => Key.ToString();
     }
