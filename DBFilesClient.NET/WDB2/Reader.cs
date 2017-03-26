@@ -11,32 +11,32 @@ namespace DBFilesClient.NET.WDB2
         {
         }
 
-        internal override void Load()
+        protected override void LoadHeader()
         {
-            var recordCount = ReadInt32();
-            if (recordCount == 0)
+            FileHeader.RecordCount = ReadInt32();
+            if (FileHeader.RecordCount == 0)
                 return;
 
-            BaseStream.Position += 4;
-            var recordSize = ReadInt32();
+            FileHeader.FieldCount = ReadInt32();
+            FileHeader.RecordSize = ReadInt32();
             var stringTableSize = ReadInt32();
             BaseStream.Position += 12;
-            var minIndex = ReadInt32();
-            var maxIndex = ReadInt32();
+            FileHeader.MinIndex = ReadInt32();
+            FileHeader.MaxIndex = ReadInt32();
 
             FileHeader.HasStringTable = stringTableSize != 0;
 
-            // Generate the record loader function now.
-            _loader = GenerateRecordLoader();
+            // BaseStream.Position += 8 + (FileHeader.MaxIndex - FileHeader.MinIndex + 1) * (4 + 2);
 
-            BaseStream.Position += 8 + (maxIndex - minIndex + 1) * (4 + 2);
+            FileHeader.StringTableOffset = BaseStream.Length - stringTableSize;
+        }
 
-            StringTableOffset = BaseStream.Length - stringTableSize;
-
-            for (var i = 0; i < recordCount; ++i)
+        protected override void LoadRecords()
+        {
+            for (var i = 0; i < FileHeader.RecordCount; ++i)
             {
                 LoadRecord();
-                BaseStream.Position += recordSize;
+                BaseStream.Position += FileHeader.RecordSize;
             }
         }
 
@@ -44,18 +44,7 @@ namespace DBFilesClient.NET.WDB2
         {
             var key = ReadInt32();
             BaseStream.Position -= 4;
-            TriggerRecordLoaded(key, _loader(this));
-        }
-
-        private Func<Reader<T>, T> _loader;
-
-        protected override int GetArraySize(FieldInfo fieldInfo, int fieldIndex)
-        {
-            var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
-            if (marshalAttr == null)
-                throw new InvalidOperationException($"Field '{typeof(T).Name}.{fieldInfo.Name} is an array and needs to be decorated with MarshalAsAttribute!");
-
-            return marshalAttr.SizeConst;
+            TriggerRecordLoaded(key, RecordReader(this));
         }
     }
 }

@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using DBFilesClient.NET.Types;
 
@@ -13,18 +14,35 @@ namespace DBFilesClient.NET
     {
         internal class Header
         {
-            public bool HasStringTable { get; set; } = false;
-            public bool HasIndexTable { get; set; } = false;
-            public ushort IndexField { get; set; } = 0;
+            // public int Magic               { get; set; }
+            public int RecordCount         { get; set; }
+            public int FieldCount          { get; set; }
+            public int RecordSize          { get; set; }
+            public int StringTableSize     { get; set; }
+            // public int TableHash           { get; set; }
+            // public int LayoutHash          { get; set; }
+            public int MinIndex            { get; set; }
+            public int MaxIndex            { get; set; }
+            // public int Locale              { get; set; }
+            public int CopyTableSize       { get; set; }
+            // public ushort Flags            { get; set; }
+            public ushort IndexField       { get; set; }
+            public uint TotalFieldCount     { get; set; }
+            public uint CommonDataTableSize { get; set; }
+
+            // Not actual header data
+            public long StringTableOffset  { get; set; }
+            public bool HasStringTable { get; set; }
+            public bool HasIndexTable { get; set; }
         }
 
         internal Header FileHeader { get; } = new Header();
 
-        protected long StringTableOffset { private get; set; }
+        protected Func<Reader<T>, T> RecordReader { get; private set; } 
 
         #region Record reader generation
         // ReSharper disable once StaticMemberInGenericType
-        private Dictionary<TypeCode, MethodInfo> _binaryReaderMethods { get; } = new Dictionary<TypeCode, MethodInfo>
+        private static Dictionary<TypeCode, MethodInfo> _binaryReaderMethods { get; } = new Dictionary<TypeCode, MethodInfo>
         {
             { TypeCode.Int64, typeof (BinaryReader).GetMethod("ReadInt64", Type.EmptyTypes) },
             { TypeCode.Int32, typeof (BinaryReader).GetMethod("ReadInt32", Type.EmptyTypes) },
@@ -42,12 +60,12 @@ namespace DBFilesClient.NET
             { TypeCode.String, typeof (Reader<T>).GetMethod("ReadTableString", Type.EmptyTypes) },
         };
 
-        protected virtual MethodInfo GetPrimitiveLoader(Type typeInfo, int fieldIndex)
+        internal virtual MethodInfo GetPrimitiveLoader(Type typeInfo, int fieldIndex)
         {
             return _binaryReaderMethods[Type.GetTypeCode(typeInfo)];
         }
 
-        protected virtual MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
+        internal virtual MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
         {
             var fieldType = fieldInfo.FieldType;
             if (fieldType.IsArray)
@@ -62,7 +80,50 @@ namespace DBFilesClient.NET
             return methodInfo;
         }
 
-        protected Func<Reader<T>, T> GenerateRecordLoader()
+        internal Expression GetSimpleReaderExpression(FieldInfo fieldInfo, int fieldIndex, Expression readerExpr)
+        {
+            var fieldType = fieldInfo.FieldType;
+            if (fieldType.IsArray)
+                fieldType = fieldType.GetElementType();
+
+            var typeCode = Type.GetTypeCode(fieldType);
+
+            ConstructorInfo fieldObjectCtor = null;
+            if (typeCode == TypeCode.Object)
+            {
+                var baseType = fieldType.BaseType;
+                while (baseType?.BaseType != null && baseType.BaseType.IsConstructedGenericType)
+                    baseType = baseType.BaseType;
+
+                if (baseType?.GetGenericTypeDefinition() != typeof(IObjectType<>))
+                    throw new InvalidStructureException("Only object types inheriting IObjectType<T> can be loaded.");
+
+                fieldObjectCtor = fieldType.GetConstructor(new[] { baseType?.GetGenericArguments()[0] });
+                if (fieldObjectCtor == null)
+                    throw new InvalidStructureException($"{fieldType.Name} requires a constructor.");
+            }
+
+            Expression callExpression;
+            if (typeCode != TypeCode.Object)
+            {
+                var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex);
+
+                callExpression = Expression.Call(readerExpr, callVirt);
+            }
+            else
+            {
+                // ReSharper disable once PossibleNullReferenceException
+                var wrappedType = fieldObjectCtor.GetParameters()[0].ParameterType;
+                var callVirt = GetPrimitiveLoader(wrappedType, fieldIndex);
+
+                callExpression = Expression.New(fieldObjectCtor,
+                    Expression.Convert(Expression.Call(readerExpr, callVirt), wrappedType));
+            }
+
+            return callExpression;
+        }
+
+        protected virtual void GenerateRecordLoader()
         {
             var expressions = new List<Expression>();
 
@@ -76,59 +137,30 @@ namespace DBFilesClient.NET
             expressions.Add(Expression.Assign(resultExpr, Expression.New(typeof(T))));
 
             var fieldIndex = 0;
-            var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var fieldInfo in fields)
+            var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance).ToArray();
+
+            if (fields.Length < FileHeader.FieldCount)
+                throw new InvalidOperationException(
+                    $"Structure {typeof(T).Name} is missing fields ({fields.Length} found, {FileHeader.FieldCount} expected");
+
+            for (var i = 0; i < FileHeader.FieldCount; ++i)
             {
-                var fieldType = fieldInfo.FieldType;
-                if (fieldType.IsArray)
-                {
-                    fieldType = fieldType.GetElementType();
-                    Debug.Assert(!fieldType.IsArray, "Only unidimensional arrays are supported.");
-                }
+                var fieldInfo = fields[i];
 
-                var typeCode = Type.GetTypeCode(fieldType);
-
-                ConstructorInfo fieldObjectCtor = null;
-                if (typeCode == TypeCode.Object)
-                {
-                    var baseType = fieldType.BaseType;
-                    while (baseType?.BaseType != null && baseType.BaseType.IsConstructedGenericType)
-                        baseType = baseType.BaseType;
-
-                    if (baseType?.GetGenericTypeDefinition() != typeof(IObjectType<>))
-                        throw new InvalidStructureException("Only object types inheriting IObjectType<T> can be loaded.");
-
-                    fieldObjectCtor = fieldType.GetConstructor(new[] { baseType?.GetGenericArguments()[0] });
-                    if (fieldObjectCtor == null)
-                        throw new InvalidStructureException($"{fieldType.Name} requires a constructor.");
-                }
-
-                Expression callExpression;
-                if (typeCode != TypeCode.Object)
-                {
-                    var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex);
-
-                    callExpression = Expression.Call(readerExpr, callVirt);
-                }
-                else
-                {
-                    // ReSharper disable once PossibleNullReferenceException
-                    var wrappedType = fieldObjectCtor.GetParameters()[0].ParameterType;
-                    var callVirt = GetPrimitiveLoader(wrappedType, fieldIndex);
-
-                    callExpression = Expression.New(fieldObjectCtor, Expression.Convert(Expression.Call(readerExpr, callVirt), wrappedType));
-                }
+                var callExpression = GetSimpleReaderExpression(fieldInfo, fieldIndex, readerExpr);
 
                 if (!fieldInfo.FieldType.IsArray)
                 {
-                    expressions.Add(Expression.Assign(Expression.MakeMemberAccess(resultExpr, fieldInfo), Expression.Convert(callExpression, fieldType)));
+                    expressions.Add(Expression.Assign(
+                        Expression.MakeMemberAccess(resultExpr, fieldInfo),
+                        Expression.Convert(callExpression, fieldInfo.FieldType)));
                 }
                 else
                 {
                     var arraySize = GetArraySize(fieldInfo, fieldIndex);
 
                     var exitLabelExpr = Expression.Label();
-                    var itrExpr = Expression.Variable(typeof(int), "itr");
+                    var itrExpr = Expression.Variable(typeof(int));
                     expressions.Add(Expression.Block(
                         new[] { itrExpr },
                         // ReSharper disable once AssignNullToNotNullAttribute
@@ -145,7 +177,7 @@ namespace DBFilesClient.NET
                                 Expression.Assign(
                                     Expression.ArrayAccess(Expression.MakeMemberAccess(resultExpr, fieldInfo),
                                         Expression.PostIncrementAssign(itrExpr)),
-                                    Expression.Convert(callExpression, fieldType)),
+                                    Expression.Convert(callExpression, fieldInfo.FieldType.GetElementType())),
                                 Expression.Break(exitLabelExpr)),
                             exitLabelExpr)
                         ));
@@ -156,14 +188,20 @@ namespace DBFilesClient.NET
             expressions.Add(resultExpr);
 
             var expressionBlock = Expression.Block(new[] { resultExpr }, expressions);
-            return Expression.Lambda<Func<Reader<T>, T>>(expressionBlock, readerExpr).Compile();
+            RecordReader = Expression.Lambda<Func<Reader<T>, T>>(expressionBlock, readerExpr).Compile();
         }
 
-        protected abstract int GetArraySize(FieldInfo fieldInfo, int fieldIndex);
+        protected virtual int GetArraySize(FieldInfo fieldInfo, int fieldIndex)
+        {
+            var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+            if (marshalAttr == null)
+                throw new InvalidOperationException($"Field '{typeof(T).Name}.{fieldInfo.Name} is an array and needs to be decorated with MarshalAsAttribute!");
 
+            return marshalAttr.SizeConst;
+        }
         #endregion
-        // ReSharper disable once MemberCanBeProtected.Global
-        public string ReadInlineString()
+
+        protected string ReadInlineString()
         {
             var stringStart = BaseStream.Position;
             var stringLength = 0;
@@ -179,15 +217,13 @@ namespace DBFilesClient.NET
             return stringValue;
         }
 
-        // ReSharper disable once MemberCanBeProtected.Global
-        // ReSharper disable once UnusedMemberHiearchy.Global
-        public virtual string ReadTableString()
+        protected virtual string ReadTableString()
         {
             // Store position of the next field in this record.
             var oldPosition = BaseStream.Position + 4;
 
             // Compute offset to string in table.
-            BaseStream.Position = ReadInt32() + StringTableOffset;
+            BaseStream.Position = ReadInt32() + FileHeader.StringTableOffset;
 
             // Read the string inline.
             var stringValue = ReadInlineString();
@@ -207,16 +243,22 @@ namespace DBFilesClient.NET
                 throw new InvalidOperationException("The provided DBC/DB2 data stream must support seek operations!");
         }
 
-        internal abstract void Load();
+        internal void Load()
+        {
+            LoadHeader();
+            GenerateRecordLoader();
+            LoadRecords();
+        }
+        protected abstract void LoadHeader();
 
-        // ReSharper disable once MemberCanBeProtected.Global
-        public int ReadInt24()
+        protected virtual void LoadRecords() { }
+
+        protected int ReadInt24()
         {
             var bytes = ReadBytes(3);
             return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16);
         }
 
-        // ReSharper disable once UnusedMember.Global
         public uint ReadUInt24() => (uint)ReadInt24();
     }
 }

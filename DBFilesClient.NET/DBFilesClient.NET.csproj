@@ -45,10 +45,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Generators\RecordReader.cs" />
     <Compile Include="IStorage.cs" />
     <Compile Include="Types\IObjectType.cs" />
     <Compile Include="WDB2\Reader.cs" />
     <Compile Include="WDB5\Reader.cs" />
+    <Compile Include="WDB6\Reader.cs" />
     <Compile Include="WDBC\Reader.cs" />
     <Compile Include="DBFileNameAttribute.cs" />
     <Compile Include="InvalidStructureException.cs" />

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 
 namespace DBFilesClient.NET
@@ -16,7 +15,7 @@ namespace DBFilesClient.NET
         public ushort IndexField { get; set; }
         #endregion
 
-        public Storage(Stream fileStream)
+        public Storage(Stream fileStream, bool readOnly = true)
         {
             FromStream(fileStream);
         }
@@ -30,6 +29,9 @@ namespace DBFilesClient.NET
                 Reader<T> fileReader;
                 switch (Signature)
                 {
+                    case 0x36424457:
+                        fileReader = new WDB6.Reader<T>(dataStream);
+                        break;
                     case 0x35424457:
                         fileReader = new WDB5.Reader<T>(dataStream);
                         break;
@@ -52,7 +54,7 @@ namespace DBFilesClient.NET
             }
         }
 
-        public Storage(string fileName)
+        public Storage(string fileName, bool readOnly = true)
         {
             using (var fileStream = File.Open(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
