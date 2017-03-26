@@ -1,10 +1,12 @@
 # DBFilesClient.NET [![NuGet version](https://badge.fury.io/nu/DBFilesClient.NET.svg)](https://badge.fury.io/nu/DBFilesClient.NET)
-A blazing-fast "new" DBC/DB2 reader for World of Warcraft.
-Name is totally not stolen from [LordJZ's library](http://github.com/LordJZ/DBFilesClient.NET).
+A blazing-fast DBC/DB2 reader for World of Warcraft.
+Name is totally not stolen from [LordJZ's old 4.3.4 library](http://github.com/LordJZ/DBFilesClient.NET).
+
+The library supports WDBC (Vanilla+), WDB2 (Cata+), WDB5 (WoD+), and WDB6 (Legion+) file formats.
 
 ## Planned features
 
-1. Support more flavors of DB2 (WDB3, WDB4)
+1. Support more flavors of DB2 (WDB3, WDB4
 
 ## Usage
 
