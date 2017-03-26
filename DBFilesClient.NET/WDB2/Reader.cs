@@ -19,16 +19,16 @@ namespace DBFilesClient.NET.WDB2
 
             FileHeader.FieldCount = ReadInt32();
             FileHeader.RecordSize = ReadInt32();
-            var stringTableSize = ReadInt32();
+            FileHeader.StringTableSize = ReadInt32();
             BaseStream.Position += 12;
             FileHeader.MinIndex = ReadInt32();
             FileHeader.MaxIndex = ReadInt32();
 
-            FileHeader.HasStringTable = stringTableSize != 0;
+            FileHeader.HasStringTable = FileHeader.StringTableSize != 0;
 
             // BaseStream.Position += 8 + (FileHeader.MaxIndex - FileHeader.MinIndex + 1) * (4 + 2);
 
-            FileHeader.StringTableOffset = BaseStream.Length - stringTableSize;
+            FileHeader.StringTableOffset = BaseStream.Length - FileHeader.StringTableSize;
         }
 
         protected override void LoadRecords()
