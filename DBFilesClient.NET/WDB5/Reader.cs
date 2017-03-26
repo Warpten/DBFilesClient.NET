@@ -10,7 +10,7 @@ namespace DBFilesClient.NET.WDB5
     internal class Reader<T> : NET.Reader<T> where T : class, new()
     {
         #region Header extras
-        private FieldEntry[] FieldMeta { get; set; }
+        protected FieldEntry[] FieldMeta { get; set; }
         #endregion
 
         // ReSharper disable StaticMemberInGenericType
@@ -86,7 +86,7 @@ namespace DBFilesClient.NET.WDB5
             return base.GetPrimitiveLoader(fieldInfo, fieldIndex);
         }
 
-        protected override string ReadTableString()
+        public override string ReadTableString()
         {
             return !FileHeader.HasStringTable ? ReadInlineString() : base.ReadTableString();
         }
@@ -279,7 +279,7 @@ namespace DBFilesClient.NET.WDB5
             return arraySize;
         }
 
-        private class FieldEntry
+        protected class FieldEntry
         {
             public short UnusedBits { private get; set; }
             public ushort Position { get; set; }

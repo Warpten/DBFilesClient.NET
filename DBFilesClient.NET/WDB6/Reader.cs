@@ -11,12 +11,6 @@ namespace DBFilesClient.NET.WDB6
 {
     internal class Reader<T> : WDB5.Reader<T> where T : class, new()
     {
-        #region Header
-        private int RecordCount { get; set; }
-        private int RecordSize { get; set; }
-        private FieldEntry[] FieldMeta { get; set; }
-        #endregion
-
         private CommonData[] _nonZeroValues;
  
         internal Reader(Stream fileData) : base(fileData)
@@ -36,7 +30,7 @@ namespace DBFilesClient.NET.WDB6
             FileHeader.MinIndex = ReadInt32();
             FileHeader.MaxIndex = ReadInt32();
             BaseStream.Position += 4; // Locale
-            var copyTableSize = ReadInt32();
+            FileHeader.CopyTableSize = ReadInt32();
             var flags = ReadUInt16();
             FileHeader.IndexField = ReadUInt16();
             FileHeader.TotalFieldCount = ReadUInt32();
@@ -45,8 +39,7 @@ namespace DBFilesClient.NET.WDB6
             FileHeader.HasIndexTable = (flags & 0x04) != 0;
             FileHeader.HasStringTable = (flags & 0x01) == 0;
 
-            _nonZeroValues = new CommonData[FileHeader.TotalFieldCount - FileHeader.FieldCount];
-
+            _nonZeroValues = new CommonData[FileHeader.TotalFieldCount];
 
             FieldMeta = new FieldEntry[FileHeader.FieldCount];
 
@@ -64,7 +57,7 @@ namespace DBFilesClient.NET.WDB6
             FileHeader.StringTableOffset = BaseStream.Position;
 
             // Add missing entries
-            FileHeader.RecordCount += copyTableSize;
+            FileHeader.RecordCount += FileHeader.CopyTableSize / 8;
         }
 
         private Action<Reader<T>, T, int> NonZeroDataLoader { get; set; }
@@ -73,7 +66,9 @@ namespace DBFilesClient.NET.WDB6
             // Generate the regular record loader
             base.GenerateRecordLoader();
 
-            BaseStream.Position -= FileHeader.CommonDataTableSize;
+            var oldPosition = BaseStream.Position;
+
+            BaseStream.Position = BaseStream.Length - FileHeader.CommonDataTableSize;
 
             var columnCount = ReadInt32();
             var fields = typeof (T).GetFields(BindingFlags.Public | BindingFlags.Instance).ToArray();
@@ -86,7 +81,7 @@ namespace DBFilesClient.NET.WDB6
             var recordKeyExpr  = Expression.Parameter(typeof (int));
             var structureExpr  = Expression.Parameter(typeof (T));
             var localExpr      = Expression.Variable(typeof (object));
-            for (int j = 0, i = FileHeader.FieldCount; i < FileHeader.TotalFieldCount; ++i, ++j)
+            for (var i = FileHeader.FieldCount; i < FileHeader.TotalFieldCount; ++i)
             {
                 var fieldInfo = fields[i];
                 if (fieldInfo.FieldType.IsArray)
@@ -95,7 +90,7 @@ namespace DBFilesClient.NET.WDB6
                 expressionList.Add(Expression.Assign(localExpr,
                     Expression.Call(readerExpr,
                         typeof (Reader<T>).GetMethod("GetCommonDataForRecord", new[] { typeof (int), typeof (int) }),
-                        Expression.Constant(j), recordKeyExpr)));
+                        Expression.Constant(i), recordKeyExpr)));
                 expressionList.Add(Expression.IfThen(
                     Expression.NotEqual(localExpr, Expression.Constant(null)),
                     Expression.Assign(
@@ -107,10 +102,12 @@ namespace DBFilesClient.NET.WDB6
                 Expression.Block(new[] { localExpr}, expressionList),
                 readerExpr, structureExpr, recordKeyExpr);
             NonZeroDataLoader = lambda.Compile();
+
+            BaseStream.Position = oldPosition;
         }
 
         // Just to ease on all the Expression stuff.
-        internal object GetCommonDataForRecord(int columnIndex, int key) => _nonZeroValues[columnIndex].TryGetValue(key);
+        public object GetCommonDataForRecord(int columnIndex, int key) => _nonZeroValues[columnIndex].TryGetValue(key);
 
         /// <summary>
         /// Generates a new record for the provided key.
@@ -166,23 +163,14 @@ namespace DBFilesClient.NET.WDB6
                         arraySize = marshalAttr.SizeConst;
                 }
                 else // No padding in this case. Guessing array size is okay.
-                    arraySize = (RecordSize - currentField.Position) / currentField.ByteSize;
+                    arraySize = (FileHeader.RecordSize - currentField.Position) / currentField.ByteSize;
             }
 
             return arraySize;
         }
 
-        private class FieldEntry
-        {
-            public short UnusedBits { private get; set; }
-            public ushort Position { get; set; }
-            public int ByteSize => 4 - UnusedBits / 8;
-        }
-
         internal class CommonData
         {
-            public static MethodInfo TryGetValueMethodInfo { get; } = typeof (CommonData).GetMethod("TryGetValue", new[] {typeof (int)});
-
             private Dictionary<int, object> Values { get; }
 
             public CommonData(Reader<T> owner)

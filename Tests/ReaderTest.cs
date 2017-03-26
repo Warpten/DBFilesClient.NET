@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using DBFilesClient.NET;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Tests.Structures;
 
 namespace Tests
 {
@@ -26,19 +29,19 @@ namespace Tests
                 if (attr == null)
                     continue;
 
-                // if (attr.FileName != "SpellEffect")
-                //     continue;
+                if (attr.FileName != "CreatureDisplayInfo")
+                    continue;
 
                 var times = new List<long>();
                 var recordCount = 0;
                 for (var i = 1; i <= 10; ++i)
                 {
-                    var instanceType = typeof(Storage<>).MakeGenericType(type);
+                    var instanceType = typeof (Storage<>).MakeGenericType(type);
 
                     var countGetter = instanceType.GetProperty("Count").GetGetMethod();
                     var stopwatch = Stopwatch.StartNew();
                     var instance = Activator.CreateInstance(instanceType,
-                        $@"D:\DataDir\22566\dbc\frFR\{attr.FileName}.db2");
+                        $@"C:\Users\verto\Desktop\{attr.FileName}.db2", true);
                     stopwatch.Stop();
 
                     times.Add(stopwatch.ElapsedTicks);
@@ -52,6 +55,62 @@ namespace Tests
                     TimeSpan.FromTicks((long)times.Average()).ToString().PadRight(25), TimeSpan.FromTicks(times.Min()).ToString().PadRight(19), TimeSpan.FromTicks(times.Max()).ToString().PadRight(19),
                     recordCount);
             }
+        }
+
+        [TestMethod]
+        public void TestSpell()
+        {
+            var storage = new Storage<SpellEntry>(@"D:\DataDir\22566\dbc\frFR\Spell.db2");
+            var enumerator = storage.GetEnumerator();
+
+            for (var i = 0; i < 10; ++i)
+            {
+                if (!enumerator.MoveNext())
+                    break;
+
+                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
+            }
+        }
+
+        [TestMethod]
+        public void TestItemSparse()
+        {
+            var storage = new Storage<ItemSparseEntry>(@"D:\DataDir\22566\dbc\frFR\Item-sparse.db2");
+            var enumerator = storage.GetEnumerator();
+
+            for (var i = 0; i < 10; ++i)
+            {
+                if (!enumerator.MoveNext())
+                    break;
+
+                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
+            }
+        }
+
+        private static void PrintRecord<T>(int key, T instance)
+        {
+            foreach (var field in typeof(T).GetFields())
+            {
+                var value = field.GetValue(instance);
+
+                if (field.FieldType.IsArray)
+                {
+                    var enumerableValue = value as IEnumerable;
+                    var valueBuilder = new List<string>();
+
+                    var valueEnumerator = enumerableValue.GetEnumerator();
+                    while (valueEnumerator.MoveNext())
+                        valueBuilder.Add(valueEnumerator.Current.ToString());
+
+                    Console.WriteLine(
+                        $"[{key}] {field.Name}: {{ {string.Join(" ; ", valueBuilder.ToArray())} }}");
+                }
+                else
+                {
+                    Console.WriteLine($"[{key}] {field.Name}: {value}");
+                }
+            }
+            Console.WriteLine();
         }
     }
 }

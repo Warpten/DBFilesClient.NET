@@ -136,16 +136,15 @@ namespace DBFilesClient.NET
             // Instantiate the return value.
             expressions.Add(Expression.Assign(resultExpr, Expression.New(typeof(T))));
 
-            var fieldIndex = 0;
             var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance).ToArray();
 
             if (fields.Length < FileHeader.FieldCount)
                 throw new InvalidOperationException(
                     $"Structure {typeof(T).Name} is missing fields ({fields.Length} found, {FileHeader.FieldCount} expected");
 
-            for (var i = 0; i < FileHeader.FieldCount; ++i)
+            for (var fieldIndex = 0; fieldIndex < FileHeader.FieldCount; ++fieldIndex)
             {
-                var fieldInfo = fields[i];
+                var fieldInfo = fields[fieldIndex];
 
                 var callExpression = GetSimpleReaderExpression(fieldInfo, fieldIndex, readerExpr);
 
@@ -182,8 +181,6 @@ namespace DBFilesClient.NET
                             exitLabelExpr)
                         ));
                 }
-
-                ++fieldIndex;
             }
             expressions.Add(resultExpr);
 
@@ -201,7 +198,7 @@ namespace DBFilesClient.NET
         }
         #endregion
 
-        protected string ReadInlineString()
+        public string ReadInlineString()
         {
             var stringStart = BaseStream.Position;
             var stringLength = 0;
@@ -217,7 +214,7 @@ namespace DBFilesClient.NET
             return stringValue;
         }
 
-        protected virtual string ReadTableString()
+        public virtual string ReadTableString()
         {
             // Store position of the next field in this record.
             var oldPosition = BaseStream.Position + 4;
@@ -246,6 +243,7 @@ namespace DBFilesClient.NET
         internal void Load()
         {
             LoadHeader();
+
             GenerateRecordLoader();
             LoadRecords();
         }
@@ -253,7 +251,7 @@ namespace DBFilesClient.NET
 
         protected virtual void LoadRecords() { }
 
-        protected int ReadInt24()
+        public int ReadInt24()
         {
             var bytes = ReadBytes(3);
             return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16);
