@@ -89,6 +89,7 @@
     <Compile Include="Structures\ItemSpecOverrideEntry.cs" />
     <Compile Include="ReaderTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Structures\MapEntry.cs" />
     <Compile Include="Structures\SoundKitEntry.cs" />
     <Compile Include="Structures\SpellCastTimesEntry.cs" />
     <Compile Include="Structures\SpellCategoriesEntry.cs" />

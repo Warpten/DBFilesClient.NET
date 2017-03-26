@@ -101,9 +101,13 @@ namespace DBFilesClient.NET.WDB5
             if (FileHeader.RecordCount == 0)
                 return;
 
-            FieldMeta = new FieldEntry[ReadInt32()];
+            FileHeader.FieldCount = ReadInt32();
+
+            FieldMeta = new FieldEntry[FileHeader.FieldCount];
+
             FileHeader.RecordSize = ReadInt32();
-            BaseStream.Position += 4 + 4 + 4;
+            FileHeader.StringTableSize = ReadInt32();
+            BaseStream.Position += 4 + 4;
             FileHeader.MinIndex = ReadInt32();
             FileHeader.MaxIndex = ReadInt32();
             BaseStream.Position += 4;
@@ -122,8 +126,7 @@ namespace DBFilesClient.NET.WDB5
                 FieldMeta[i].Position = ReadUInt16();
             }
 
-            FileHeader.StringTableOffset = 0x30 + FieldMeta.Length*(2 + 2) +
-                                           FileHeader.RecordSize*FileHeader.RecordCount;
+            FileHeader.StringTableOffset = 0x30 + FieldMeta.Length*(2 + 2) + FileHeader.RecordSize*FileHeader.RecordCount;
         }
 
         protected override void LoadRecords()

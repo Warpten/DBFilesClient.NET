@@ -66,6 +66,9 @@ namespace DBFilesClient.NET.WDB6
             // Generate the regular record loader
             base.GenerateRecordLoader();
 
+            if (FileHeader.CommonDataTableSize == 0)
+                return;
+
             var oldPosition = BaseStream.Position;
 
             BaseStream.Position = BaseStream.Length - FileHeader.CommonDataTableSize;

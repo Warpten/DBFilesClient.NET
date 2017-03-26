@@ -91,6 +91,21 @@ namespace Tests
         }
 
         [TestMethod]
+        public void Map()
+        {
+            var storage = new Storage<MapEntry>(@"C:\Users\verto\Desktop\dbfilesclient\map.db2");
+            var enumerator = storage.GetEnumerator();
+
+            for (var i = 0; i < 10; ++i)
+            {
+                if (!enumerator.MoveNext())
+                    break;
+
+                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
+            }
+        }
+
+        [TestMethod]
         public void ItemSparse()
         {
             var storage = new Storage<ItemSparseEntry>(@"D:\DataDir\22566\dbc\frFR\Item-sparse.db2");
