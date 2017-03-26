@@ -126,14 +126,14 @@ namespace DBFilesClient.NET.WDB5
                 FieldMeta[i].Position = ReadUInt16();
             }
 
-            FileHeader.StringTableOffset = 0x30 + FieldMeta.Length*(2 + 2) + FileHeader.RecordSize*FileHeader.RecordCount;
+            FileHeader.StringTableOffset = 0x30 + FieldMeta.Length * (2 + 2) + FileHeader.RecordSize * FileHeader.RecordCount;
         }
 
         protected override void LoadRecords()
         {
             // Generate common file offsets
             var recordPosition = BaseStream.Position;
-            var copyTablePosition = BaseStream.Length - FileHeader.CopyTableSize;
+            var copyTablePosition = BaseStream.Length - FileHeader.CopyTableSize - FileHeader.CommonDataTableSize;
             FileHeader.CopyTableSize /= 8; // Simpler for later.
 
             int[] idTable = null;

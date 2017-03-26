@@ -54,7 +54,7 @@ namespace DBFilesClient.NET.WDB6
             if (FileHeader.IndexField >= FieldMeta.Length)
                 throw new InvalidOperationException("The index column is contained outside of the regular data stream!");
 
-            FileHeader.StringTableOffset = BaseStream.Position;
+            FileHeader.StringTableOffset = BaseStream.Position + FileHeader.RecordSize * FileHeader.RecordCount;
 
             // Add missing entries
             FileHeader.RecordCount += FileHeader.CopyTableSize / 8;
