@@ -80,7 +80,7 @@ namespace DBFilesClient.NET
             return methodInfo;
         }
 
-        internal Expression GetSimpleReaderExpression(FieldInfo fieldInfo, int fieldIndex, Expression readerExpr)
+        private Expression GetSimpleReaderExpression(FieldInfo fieldInfo, int fieldIndex, Expression readerExpr)
         {
             var fieldType = fieldInfo.FieldType;
             if (fieldType.IsArray)
@@ -198,6 +198,7 @@ namespace DBFilesClient.NET
         }
         #endregion
 
+        // Needs to be public to be visible using Type.GetMethod(string, Type[])
         public string ReadInlineString()
         {
             var stringStart = BaseStream.Position;
@@ -214,6 +215,7 @@ namespace DBFilesClient.NET
             return stringValue;
         }
 
+        // Needs to be public to be visible using Type.GetMethod(string, Type[])
         public virtual string ReadTableString()
         {
             // Store position of the next field in this record.
@@ -247,9 +249,6 @@ namespace DBFilesClient.NET
             GenerateRecordLoader();
             LoadRecords();
         }
-        protected abstract void LoadHeader();
-
-        protected virtual void LoadRecords() { }
 
         public int ReadInt24()
         {
@@ -258,5 +257,8 @@ namespace DBFilesClient.NET
         }
 
         public uint ReadUInt24() => (uint)ReadInt24();
+
+        protected abstract void LoadHeader();
+        protected abstract void LoadRecords();
     }
 }

@@ -140,7 +140,7 @@ namespace DBFilesClient.NET.WDB6
                 }
             }
 
-            NonZeroDataLoader(this, record, key);
+            NonZeroDataLoader?.Invoke(this, record, key);
             TriggerRecordLoaded(key, record);
         }
 
