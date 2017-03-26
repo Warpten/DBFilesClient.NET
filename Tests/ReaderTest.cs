@@ -15,7 +15,7 @@ namespace Tests
     public class ReaderTest
     {
         [TestMethod]
-        public void TestLoad()
+        public void Load()
         {
             Console.WriteLine("File name                        Average time to load     Minimum time       Maximum time       Record count");
             Console.WriteLine("------------------------------------------------------------------------------------------------------------");
@@ -58,7 +58,25 @@ namespace Tests
         }
 
         [TestMethod]
-        public void TestSpell()
+        public void CreatureDisplayInfo()
+        {
+            var storage = new Storage<CreatureDisplayInfoEntry>(@"C:\Users\verto\Desktop\CreatureDisplayInfo.db2");
+            var enumerator = storage.GetEnumerator();
+
+            /*for (var i = 0; i < 10; ++i)
+            {
+                if (!enumerator.MoveNext())
+                    break;
+
+                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
+            }*/
+
+            PrintRecord(58248, storage[58248]);
+            Console.WriteLine("Fuck you, mate");
+        }
+
+        [TestMethod]
+        public void Spell()
         {
             var storage = new Storage<SpellEntry>(@"D:\DataDir\22566\dbc\frFR\Spell.db2");
             var enumerator = storage.GetEnumerator();
@@ -73,7 +91,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void TestItemSparse()
+        public void ItemSparse()
         {
             var storage = new Storage<ItemSparseEntry>(@"D:\DataDir\22566\dbc\frFR\Item-sparse.db2");
             var enumerator = storage.GetEnumerator();

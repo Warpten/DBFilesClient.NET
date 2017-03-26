@@ -175,10 +175,11 @@ namespace DBFilesClient.NET.WDB6
 
             public CommonData(Reader<T> owner)
             {
-                Values = new Dictionary<int, object>(owner.ReadInt32());
+                var count = owner.ReadInt32();
+                Values = new Dictionary<int, object>(count);
                 var expectedType = owner.ReadByte();
 
-                for (var i = 0; i < Values.Count; ++i)
+                for (var i = 0; i < count; ++i)
                 {
                     switch (expectedType)
                     {
