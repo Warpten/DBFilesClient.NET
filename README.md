@@ -82,6 +82,10 @@ public sealed class AreaTableEntry
 }
 ```
 
+#### WDB6
+
+Everything related to WDB5 still applies. This format mostly introduces field reordering, because of the birth of a « common » block (which I will now refer to as « off-stream »). Given the added complexity this introduces, you should notice a rough 30% loading speed decrease, averaging. I will wait until I have more structures available to run proper benchmarks.
+
 ## Advanced
 
 Starting with version 1.1.0.0, DBFilesClient.NET now allows you to use somewhat complex types in your structures declaration.
@@ -114,8 +118,6 @@ With added effort, assuming you had access to some sort of representation of the
 
 ## Performance
 
-This section only refers to WDB5 DB2 files. 
-
 Here are a few examples (randomly selected) of loading speeds for various files.
 My work laptop has an i3-2310M CPU and 8Gb of DDR3 RAM.
 
@@ -124,6 +126,12 @@ Expected record count in the table below is calculated depending on field meta:
 * Otherwise, we use the record count in header.
 
 We then add the amount of entries in the copy table.
+
+#### WDB6
+
+Coming soon (tm)
+
+#### WDB5
 
 > Speed measurements as of commit f3d097706200a8f50b2236d3f68877e310e1f141
 
