@@ -1,11 +1,10 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace DBFilesClient.NET.WDBC
 {
-    internal sealed class Reader<T> : NET.Reader<T> where T : class, new()
+    internal class Reader<T> : NET.Reader<T> where T : class, new()
     {
         internal Reader(Stream fileStream) : base(fileStream)
         {
@@ -20,10 +19,10 @@ namespace DBFilesClient.NET.WDBC
 
             BaseStream.Position += 4; // Counts arrays
             FileHeader.RecordSize = ReadInt32();
-            var stringBlockSize = ReadInt32();
+            FileHeader.StringTableSize = ReadInt32();
 
-            FileHeader.HasStringTable = stringBlockSize != 0;
-            FileHeader.StringTableOffset = BaseStream.Length - stringBlockSize;
+            FileHeader.HasStringTable = FileHeader.StringTableSize != 0;
+            FileHeader.StringTableOffset = BaseStream.Length - FileHeader.StringTableSize;
 
             foreach (var fieldInfo in typeof (T).GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
