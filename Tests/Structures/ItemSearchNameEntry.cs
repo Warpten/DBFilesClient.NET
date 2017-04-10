@@ -1,11 +1,12 @@
-using DBFilesClient.NET;
+using System.Runtime.InteropServices;
 
 namespace Tests.Structures
 {
-    [DBFileName("ItemSearchName")]
-    public sealed class ItemSearchNameEntry
+    [DBFile("ItemSearchName")]
+    public class ItemSearchNameEntry
     {
         public string Name;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
         public uint[] Flags;
         public uint AllowableRace;
         public uint RequiredSpell;
@@ -17,6 +18,6 @@ namespace Tests.Structures
         public byte RequiredExpansion;
         public byte RequiredReputationRank;
         public byte RequiredLevel;
-        public uint AllowableClass;
+        public int AllowableClass;
     }
 }

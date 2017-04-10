@@ -213,6 +213,10 @@ namespace DBFilesClient.NET.WDB5
                 LoadRecord(0, newIndex, true);
                 BaseStream.Position = nextCopyTablePosition;
             }
+
+
+            // Add missing entries
+            FileHeader.RecordCount += FileHeader.CopyTableSize;
         }
 
         /// <summary>

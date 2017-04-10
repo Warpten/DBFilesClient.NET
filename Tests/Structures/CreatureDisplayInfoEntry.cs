@@ -1,32 +1,33 @@
-using DBFilesClient.NET;
+﻿using System.Runtime.InteropServices;
 
 namespace Tests.Structures
 {
-    [DBFileName("CreatureDisplayInfo")]
-    public sealed class CreatureDisplayInfoEntry
+    [DBFile("CreatureDisplayInfo")]
+    public class CreatureDisplayInfoEntry
     {
         public int ID;
         public float CreatureModelScale;
-        public short Model;
+        public short ModelID;
         public short NPCSoundID;
         public byte SizeClass;
-        public byte   F;
-        public byte   G;
-        public int ExtendedDisplayInfo;
-        public int[] TextureVariation;
-        public int    J;
-        public byte   K;
+        public byte Flags;
+        public sbyte Gender;
+        public uint ExtendedDisplayInfoID;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+        public uint[] TextureVariation;
+        public uint PortraitTextureFileDataID;
+        public byte CreatureModelAlpha;
         public short SoundID;
         public float PlayerModelScale;
-        public int    N;
+        public int PortraitCreatureDisplayInfoID;
         public byte BloodID;
         public short ParticleColorID;
-        public int CreatureGeosetData;
+        public uint CreatureGeosetData;
         public short ObjectEffectPackageID;
         public short AnimReplacementSetID;
-        public byte   T;
+        public sbyte UnarmedWeaponSubclass;
         public int StateSpellVisualKitID;
-        public float  V;
-        public int    W; 
+        public float InstanceOtherPlayerPetScale;                             // scale of not own player pets inside dungeons/raids/scenarios
+        public int MountSpellVisualKitID;
     }
 }

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using DBFilesClient.NET;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Tests.Structures;
@@ -25,11 +24,8 @@ namespace Tests
                 if (!type.IsClass)
                     continue;
 
-                var attr = type.GetCustomAttribute<DBFileNameAttribute>();
+                var attr = type.GetCustomAttribute<DBFileAttribute>();
                 if (attr == null)
-                    continue;
-
-                if (attr.FileName != "CreatureDisplayInfo")
                     continue;
 
                 var times = new List<long>();
@@ -38,16 +34,23 @@ namespace Tests
                 {
                     var instanceType = typeof (Storage<>).MakeGenericType(type);
 
-                    var countGetter = instanceType.GetProperty("Count").GetGetMethod();
-                    var stopwatch = Stopwatch.StartNew();
-                    var instance = Activator.CreateInstance(instanceType,
-                        $@"C:\Users\verto\Desktop\{attr.FileName}.db2", true);
-                    stopwatch.Stop();
+                    try
+                    {
+                        var countGetter = instanceType.GetProperty("Count").GetGetMethod();
+                        var stopwatch = Stopwatch.StartNew();
+                        var instance = Activator.CreateInstance(instanceType,
+                            $@".\DBFilesClient\{attr.FileName}.db2", true);
+                        stopwatch.Stop();
 
-                    times.Add(stopwatch.ElapsedTicks);
+                        times.Add(stopwatch.ElapsedTicks);
 
-                    if (recordCount == 0)
-                        recordCount = (int)countGetter.Invoke(instance, new object[] { });
+                        if (recordCount == 0)
+                            recordCount = (int)countGetter.Invoke(instance, new object[] { });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
                 }
 
                 Console.WriteLine("{0}{1}{2}{3}{4}",
@@ -58,66 +61,11 @@ namespace Tests
         }
 
         [TestMethod]
-        public void CreatureDisplayInfo()
+        public void SpellXSpellVisual()
         {
-            var storage = new Storage<CreatureDisplayInfoEntry>(@"C:\Users\verto\Desktop\CreatureDisplayInfo.db2");
-            var enumerator = storage.GetEnumerator();
-
-            /*for (var i = 0; i < 10; ++i)
-            {
-                if (!enumerator.MoveNext())
-                    break;
-
-                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
-            }*/
-
-            PrintRecord(58248, storage[58248]);
-            Console.WriteLine("Fuck you, mate");
-        }
-
-        [TestMethod]
-        public void Spell()
-        {
-            var storage = new Storage<SpellEntry>(@"D:\DataDir\22566\dbc\frFR\Spell.db2");
-            var enumerator = storage.GetEnumerator();
-
-            for (var i = 0; i < 10; ++i)
-            {
-                if (!enumerator.MoveNext())
-                    break;
-
-                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
-            }
-        }
-
-        [TestMethod]
-        public void Map()
-        {
-            var storage = new Storage<MapEntry>(@"C:\Users\verto\Desktop\dbfilesclient\map.db2");
-            var enumerator = storage.GetEnumerator();
-
-            for (var i = 0; i < 10; ++i)
-            {
-                if (!enumerator.MoveNext())
-                    break;
-
-                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
-            }
-        }
-
-        [TestMethod]
-        public void ItemSparse()
-        {
-            var storage = new Storage<ItemSparseEntry>(@"D:\DataDir\22566\dbc\frFR\Item-sparse.db2");
-            var enumerator = storage.GetEnumerator();
-
-            for (var i = 0; i < 10; ++i)
-            {
-                if (!enumerator.MoveNext())
-                    break;
-
-                PrintRecord(enumerator.Current.Key, enumerator.Current.Value);
-            }
+            var storage = new Storage<SpellXSpellVisualEntry>(@".\DBFilesClient\SpellXSPellVisual.db2");
+            Console.WriteLine("Loaded {0} records", storage.Count);
+            Assert.IsTrue(storage.Count > 0);
         }
 
         private static void PrintRecord<T>(int key, T instance)

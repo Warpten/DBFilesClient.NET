@@ -1,17 +1,20 @@
-using DBFilesClient.NET;
-
 namespace Tests.Structures
 {
-    [DBFileName("SpellXSpellVisual")]
-    public sealed class SpellXSpellVisualEntry
+    [DBFile("SpellXSpellVisual")]
+    public class SpellXSpellVisualEntry
     {
         public uint SpellID;
-        public float Unk620;
-        public ushort SpellVisualID;
-        public ushort ViolentSpellVisualID;
-        public ushort PlayerConditionID;
-        public byte DifficultyID;
-        public byte Flags;
+        public uint SpellVisualID;
         public uint ID;
+        public float Chance;
+        public short CasterPlayerConditionID;
+        public short CasterUnitConditionID;
+        public short PlayerConditionID;
+        public short UnitConditionID;
+        public uint IconFileDataID;
+        public uint ActiveIconFileDataID;
+        public byte Flags;
+        public byte DifficultyID;
+        public byte Priority;
     }
 }

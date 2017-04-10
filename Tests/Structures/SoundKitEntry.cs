@@ -1,9 +1,7 @@
-using DBFilesClient.NET;
-
 namespace Tests.Structures
 {
-    [DBFileName("SoundKit")]
-    public sealed class SoundKitEntry
+    [DBFile("SoundKit")]
+    public class SoundKitEntry
     {
         public string Name;
         public float VolumeFloat;

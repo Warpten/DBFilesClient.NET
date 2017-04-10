@@ -1,9 +1,7 @@
-using DBFilesClient.NET;
-
 namespace Tests.Structures
 {
-    [DBFileName("Spell")]
-    public sealed class SpellEntry
+    [DBFile("Spell")]
+    public class SpellEntry
     {
         public string Name;
         public string NameSubtext;

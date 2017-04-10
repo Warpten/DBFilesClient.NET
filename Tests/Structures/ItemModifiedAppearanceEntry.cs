@@ -1,9 +1,7 @@
-using DBFilesClient.NET;
-
 namespace Tests.Structures
 {
-    [DBFileName("ItemModifiedAppearance")]
-    public sealed class ItemModifiedAppearanceEntry
+    [DBFile("ItemModifiedAppearance")]
+    public class ItemModifiedAppearanceEntry
     {
         public uint ItemID;
         public ushort AppearanceID;

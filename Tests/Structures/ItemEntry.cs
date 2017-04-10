@@ -1,9 +1,7 @@
-using DBFilesClient.NET;
-
 namespace Tests.Structures
 {
-    [DBFileName("Item")]
-    public sealed class ItemEntry
+    [DBFile("Item")]
+    public class ItemEntry
     {
         public uint FileDataID;
         public byte Class;

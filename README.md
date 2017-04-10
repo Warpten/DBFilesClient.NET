@@ -121,9 +121,7 @@ With added effort, assuming you had access to some sort of representation of the
 ## Performance
 
 Here are a few examples (randomly selected) of loading speeds for various files.
-My work laptop has an i3-2310M CPU and 8Gb of DDR3 RAM.
-
-Expected record count in the table below is calculated depending on field meta:
+Expected record count in the tables below is calculated depending on field meta:
 * If the file has an offset map, we count there.
 * Otherwise, we use the record count in header.
 
@@ -131,11 +129,35 @@ We then add the amount of entries in the copy table.
 
 #### WDB6
 
-Coming soon (tm)
+> Seed measurements as of commit
+> Made on an i7-7700HQ with 16 Gb of RAM.
+
+```
+File name                        Average time to load     Minimum time       Maximum time       Record count
+------------------------------------------------------------------------------------------------------------
+CreatureDisplayInfo              00:00:00.0768482         00:00:00.0660218   00:00:00.0851612   64001
+CriteriaTree                     00:00:00.0306608         00:00:00.0204598   00:00:00.0365723   45800
+Item                             00:00:00.0274283         00:00:00.0188657   00:00:00.0377612   122686
+ItemModifiedAppearance           00:00:00.0305748         00:00:00.0162941   00:00:00.0543656   81961
+ItemSearchName                   00:00:00.0787529         00:00:00.0655134   00:00:00.0923490   79394
+ItemSpecOverride                 00:00:00.0088318         00:00:00.0056070   00:00:00.0213293   38956
+SoundKit                         00:00:00.0744181         00:00:00.0575470   00:00:00.0869482   74960
+SpellCastTimes                   00:00:00.0002227         00:00:00.0001784   00:00:00.0005477   132
+SpellCategories                  00:00:00.0100893         00:00:00.0070964   00:00:00.0173277   41938
+SpellEffect                      00:00:00.4361209         00:00:00.4028511   00:00:00.4657441   256034
+Spell                            00:00:00.2844859         00:00:00.2502438   00:00:00.3232078   171012
+SpellInterrupts                  00:00:00.0257089         00:00:00.0150873   00:00:00.0750393   50246
+SpellItemEnchantmentCondition    00:00:00.0005113         00:00:00.0003889   00:00:00.0011858   0
+SpellMisc                        00:00:00.1267042         00:00:00.1118521   00:00:00.1402427   171805
+SpellXSpellVisual                00:00:00.0729530         00:00:00.0598524   00:00:00.0922432   104795
+TaxiPathNode                     00:00:00.0359350         00:00:00.0268505   00:00:00.0482900   71763
+WMOAreaTable                     00:00:00.0246506         00:00:00.0146250   00:00:00.0344843   39087
+```
 
 #### WDB5
 
 > Speed measurements as of commit f3d097706200a8f50b2236d3f68877e310e1f141
+> Measurements were made on an i3-2310M with 8 Gb of DDR3 RAM.
 
 ```
 File name                        Average time to load     Minimum time       Maximum time       Record count

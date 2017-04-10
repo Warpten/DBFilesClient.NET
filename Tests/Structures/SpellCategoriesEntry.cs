@@ -1,9 +1,7 @@
-using DBFilesClient.NET;
-
 namespace Tests.Structures
 {
-    [DBFileName("SpellCategories")]
-    public sealed class SpellCategoriesEntry
+    [DBFile("SpellCategories")]
+    public class SpellCategoriesEntry
     {
         public uint SpellID;
         public ushort Category;

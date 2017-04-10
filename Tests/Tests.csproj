@@ -80,8 +80,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="Structures\CreatureDisplayInfoEntry.cs" />
     <Compile Include="Structures\CriteriaTreeEntry.cs" />
+    <Compile Include="Structures\DBFileAttribute.cs" />
     <Compile Include="Structures\ItemEntry.cs" />
     <Compile Include="Structures\ItemModifiedAppearanceEntry.cs" />
     <Compile Include="Structures\ItemSearchNameEntry.cs" />
@@ -89,7 +89,6 @@
     <Compile Include="Structures\ItemSpecOverrideEntry.cs" />
     <Compile Include="ReaderTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Structures\MapEntry.cs" />
     <Compile Include="Structures\SoundKitEntry.cs" />
     <Compile Include="Structures\SpellCastTimesEntry.cs" />
     <Compile Include="Structures\SpellCategoriesEntry.cs" />
@@ -99,6 +98,7 @@
     <Compile Include="Structures\SpellItemEnchantmentConditionEntry.cs" />
     <Compile Include="Structures\SpellMiscEntry.cs" />
     <Compile Include="Structures\SpellXSpellVisualEntry.cs" />
+    <Compile Include="Structures\CreatureDisplayInfoEntry.cs" />
     <Compile Include="Structures\TaxiPathNodeEntry.cs" />
     <Compile Include="Structures\WMOAreaTableEntry.cs" />
   </ItemGroup>

@@ -125,6 +125,9 @@ namespace DBFilesClient.NET
 
         protected virtual void GenerateRecordLoader()
         {
+            if (RecordReader != null)
+                return;
+
             var expressions = new List<Expression>();
 
             // Create a parameter expression that holds the argument type.

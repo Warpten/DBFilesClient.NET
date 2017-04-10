@@ -10,7 +10,7 @@ namespace DBFilesClient.NET
         Type RecordType { get; }
 
         /// <summary>
-        /// Signature of the file (WDBC, WDB2, WDB5).
+        /// Signature of the file (WDBC, WDB2, WDB5, WDB6).
         /// </summary>
         int Signature { get; set; }
 
@@ -26,8 +26,7 @@ namespace DBFilesClient.NET
         bool HasStringTable { get; set; }
 
         /// <summary>
-        /// Position of the index field in the record.
-        /// This is 0 by design in WDBC and WDB2.
+        /// Position of the index field in the record. This is 0 by design in WDBC and WDB2.
         /// </summary>
         ushort IndexField { get; set; }
     }

@@ -55,9 +55,6 @@ namespace DBFilesClient.NET.WDB6
                 throw new InvalidOperationException("The index column is contained outside of the regular data stream!");
 
             FileHeader.StringTableOffset = BaseStream.Position + FileHeader.RecordSize * FileHeader.RecordCount;
-
-            // Add missing entries
-            FileHeader.RecordCount += FileHeader.CopyTableSize / 8;
         }
 
         private Action<Reader<T>, T, int> NonZeroDataLoader { get; set; }
@@ -76,33 +73,64 @@ namespace DBFilesClient.NET.WDB6
             var columnCount = ReadInt32();
             var fields = typeof (T).GetFields(BindingFlags.Public | BindingFlags.Instance).ToArray();
             for (var i = 0; i < columnCount; ++i)
-                _nonZeroValues[i] = new CommonData(this);
+                _nonZeroValues[i] = new CommonData(this, fields[i].FieldType);
 
             // Generate an Action<Reader<T>, T, int>
             var expressionList = new List<Expression>();
             var readerExpr     = Expression.Parameter(typeof (Reader<T>));
             var recordKeyExpr  = Expression.Parameter(typeof (int));
             var structureExpr  = Expression.Parameter(typeof (T));
-            var localExpr      = Expression.Variable(typeof (object));
             for (var i = FileHeader.FieldCount; i < FileHeader.TotalFieldCount; ++i)
             {
                 var fieldInfo = fields[i];
                 if (fieldInfo.FieldType.IsArray)
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Array fields in off-stream data are not handled");
 
-                expressionList.Add(Expression.Assign(localExpr,
-                    Expression.Call(readerExpr,
-                        typeof (Reader<T>).GetMethod("GetCommonDataForRecord", new[] { typeof (int), typeof (int) }),
-                        Expression.Constant(i), recordKeyExpr)));
-                expressionList.Add(Expression.IfThen(
-                    Expression.NotEqual(localExpr, Expression.Constant(null)),
-                    Expression.Assign(
-                        Expression.MakeMemberAccess(structureExpr, fieldInfo),
-                        Expression.Convert(localExpr, fieldInfo.FieldType))));
+                MethodInfo convertMethod = null;
+                switch (Type.GetTypeCode(fieldInfo.FieldType))
+                {
+                    case TypeCode.Int32:
+                        convertMethod = typeof(Convert).GetMethod("ToInt32", new[] {typeof(object)});
+                        break;
+                    case TypeCode.UInt32:
+                        convertMethod = typeof(Convert).GetMethod("ToUInt32", new[] { typeof(object) });
+                        break;
+                    case TypeCode.Single:
+                        convertMethod = typeof(Convert).GetMethod("ToSingle", new[] { typeof(object) });
+                        break;
+                    case TypeCode.Int16:
+                        convertMethod = typeof(Convert).GetMethod("ToInt16", new[] { typeof(object) });
+                        break;
+                    case TypeCode.UInt16:
+                        convertMethod = typeof(Convert).GetMethod("ToUInt16", new[] { typeof(object) });
+                        break;
+                    case TypeCode.Byte:
+                        convertMethod = typeof(Convert).GetMethod("ToByte", new[] { typeof(object) });
+                        break;
+                    case TypeCode.SByte:
+                        convertMethod = typeof(Convert).GetMethod("ToSByte", new[] { typeof(object) });
+                        break;
+                }
+
+                if (convertMethod == null)
+                    continue;
+
+                var localExpr = Expression.Variable(typeof(object));
+
+                expressionList.Add(Expression.Block(new[] { localExpr },
+                    Expression.Assign(localExpr,
+                        Expression.Call(readerExpr,
+                            typeof(Reader<T>).GetMethod("GetCommonDataForRecord", new[] { typeof(int), typeof(int) }),
+                            Expression.Constant(i), recordKeyExpr)),
+                    Expression.IfThen(
+                        Expression.NotEqual(localExpr, Expression.Constant(null)),
+                        Expression.Assign(
+                            Expression.MakeMemberAccess(structureExpr, fieldInfo),
+                            Expression.Convert(localExpr, fieldInfo.FieldType)))));
             }
 
             var lambda = Expression.Lambda<Action<Reader<T>, T, int>>(
-                Expression.Block(new[] { localExpr}, expressionList),
+                Expression.Block(expressionList),
                 readerExpr, structureExpr, recordKeyExpr);
             NonZeroDataLoader = lambda.Compile();
 
@@ -110,7 +138,10 @@ namespace DBFilesClient.NET.WDB6
         }
 
         // Just to ease on all the Expression stuff.
-        public object GetCommonDataForRecord(int columnIndex, int key) => _nonZeroValues[columnIndex].TryGetValue(key);
+        public object GetCommonDataForRecord(int columnIndex, int key)
+        {
+            return _nonZeroValues[columnIndex].TryGetValue(key);
+        }
 
         /// <summary>
         /// Generates a new record for the provided key.
@@ -120,7 +151,7 @@ namespace DBFilesClient.NET.WDB6
         /// </summary>
         /// <param name="recordPosition">Absolute position of this record in the file stream.
         /// 
-        /// This parameter is used if the file has the ID column in its data members (<see cref="NET.Reader{T}.FileHeader.HasIndexTable"/> is <b>false</b>).</param>
+        /// This parameter is used if the file has the ID column in its data members (<see cref="Reader{T}.FileHeader.HasIndexTable"/> is <b>false</b>).</param>
         /// <param name="key">The index of this record (ID).</param>
         /// <param name="forceKey">If set to <b>true</b>, <see cref="recordPosition"/> is ignored.</param>
         protected override void LoadRecord(long recordPosition, int key, bool forceKey = false)
@@ -140,7 +171,9 @@ namespace DBFilesClient.NET.WDB6
                 }
             }
 
-            NonZeroDataLoader?.Invoke(this, record, key);
+            unchecked {
+                NonZeroDataLoader?.Invoke(this, record, key);
+            }
             TriggerRecordLoaded(key, record);
         }
 
@@ -172,12 +205,35 @@ namespace DBFilesClient.NET.WDB6
             return arraySize;
         }
 
+        [StructLayout(LayoutKind.Explicit)]
+        internal struct CommonDataValue
+        {
+            [FieldOffset(0)]
+            public uint UInt32;
+            [FieldOffset(0)]
+            public int Int32;
+            [FieldOffset(0)]
+            public ushort UInt16;
+            [FieldOffset(0)]
+            public short Int16;
+            [FieldOffset(0)]
+            public float Float;
+            [FieldOffset(0)]
+            public sbyte SByte;
+            [FieldOffset(0)]
+            public byte Byte;
+        }
+
         internal class CommonData
         {
             private Dictionary<int, object> Values { get; }
 
-            public CommonData(Reader<T> owner)
+            public CommonData(Reader<T> owner, Type fieldType)
             {
+                var fieldTypeCode = Type.GetTypeCode(fieldType);
+                if (fieldType.IsArray)
+                    fieldTypeCode = Type.GetTypeCode(fieldType.GetElementType());
+
                 var count = owner.ReadInt32();
                 Values = new Dictionary<int, object>(count);
                 var expectedType = owner.ReadByte();
@@ -187,16 +243,16 @@ namespace DBFilesClient.NET.WDB6
                     switch (expectedType)
                     {
                         case 1:
-                            Values[owner.ReadInt32()] = owner.ReadInt16();
+                            Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Int16 ? (object)owner.ReadInt16() : (object)owner.ReadUInt16();
                             break;
                         case 2:
-                            Values[owner.ReadInt32()] = owner.ReadByte();
+                            Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Byte ? (object)owner.ReadByte() : (object)owner.ReadSByte();
                             break;
                         case 3:
                             Values[owner.ReadInt32()] = owner.ReadSingle();
                             break;
                         case 4:
-                            Values[owner.ReadInt32()] = owner.ReadInt32();
+                            Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Int32 ? (object)owner.ReadInt32() : (object)owner.ReadUInt32();
                             break;
                         default:
                             throw new InvalidOperationException();

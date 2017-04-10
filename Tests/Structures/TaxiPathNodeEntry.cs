@@ -1,10 +1,11 @@
-using DBFilesClient.NET;
+using System.Runtime.InteropServices;
 
 namespace Tests.Structures
 {
-    [DBFileName("TaxiPathNode")]
-    public sealed class TaxiPathNodeEntry
+    [DBFile("TaxiPathNode")]
+    public class TaxiPathNodeEntry
     {
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
         public float[] Loc;
         public uint Delay;
         public ushort PathID;
