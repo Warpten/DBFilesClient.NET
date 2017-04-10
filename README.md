@@ -129,7 +129,8 @@ We then add the amount of entries in the copy table.
 
 #### WDB6
 
-> Seed measurements as of commit
+> Seed measurements as of commit af4909c4927d7fdec51660e9b029b13d92cfa39d
+> 
 > Made on an i7-7700HQ with 16 Gb of RAM.
 
 ```
@@ -157,6 +158,7 @@ WMOAreaTable                     00:00:00.0246506         00:00:00.0146250   00:
 #### WDB5
 
 > Speed measurements as of commit f3d097706200a8f50b2236d3f68877e310e1f141
+> 
 > Measurements were made on an i3-2310M with 8 Gb of DDR3 RAM.
 
 ```
