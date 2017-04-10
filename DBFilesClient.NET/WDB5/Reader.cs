@@ -190,30 +190,31 @@ namespace DBFilesClient.NET.WDB5
             }
 
             BaseStream.Position = copyTablePosition;
-            for (var i = 0; i < FileHeader.CopyTableSize; ++i)
+            ArraySegment<byte> underlyingBuffer;
+            if ((BaseStream as MemoryStream).TryGetBuffer(out underlyingBuffer))
             {
-                var newIndex = ReadInt32();
-                var oldIndex = ReadInt32();
-                
-                // Write the new index into the underlying buffer.
-                if (!FileHeader.HasIndexTable)
+                for (var i = 0; i < FileHeader.CopyTableSize; ++i)
                 {
-                    var baseMemoryStream = (MemoryStream)BaseStream;
-                    if (FieldMeta[FileHeader.IndexField].ByteSize != 4)
-                        throw new InvalidOperationException();
+                    var newIndex = ReadInt32();
+                    var oldIndex = ReadInt32();
 
-                    var underlyingBuffer = baseMemoryStream.GetBuffer();
-                    var position = offsetMap[oldIndex] + FieldMeta[FileHeader.IndexField].Position;
-                    for (var k = 0; k < FieldMeta[FileHeader.IndexField].ByteSize; ++k)
-                        underlyingBuffer[k + position] = (byte)((newIndex >> (8 * k)) & 0xFF);
+                    // Write the new index into the underlying buffer.
+                    if (!FileHeader.HasIndexTable)
+                    {
+                        if (FieldMeta[FileHeader.IndexField].ByteSize != 4)
+                            throw new InvalidOperationException();
+
+                        var position = offsetMap[oldIndex] + FieldMeta[FileHeader.IndexField].Position;
+                        for (var k = 0; k < FieldMeta[FileHeader.IndexField].ByteSize; ++k)
+                            ((IList<byte>)(underlyingBuffer))[(int)(k + position)] = (byte)((newIndex >> (8 * k)) & 0xFF);
+                    }
+
+                    var nextCopyTablePosition = BaseStream.Position;
+                    BaseStream.Position = offsetMap[oldIndex];
+                    LoadRecord(0, newIndex, true);
+                    BaseStream.Position = nextCopyTablePosition;
                 }
-
-                var nextCopyTablePosition = BaseStream.Position;
-                BaseStream.Position = offsetMap[oldIndex];
-                LoadRecord(0, newIndex, true);
-                BaseStream.Position = nextCopyTablePosition;
             }
-
 
             // Add missing entries
             FileHeader.RecordCount += FileHeader.CopyTableSize;

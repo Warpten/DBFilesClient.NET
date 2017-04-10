@@ -61,7 +61,7 @@ namespace DBFilesClient.NET
                 var fileBytes = new byte[fileStream.Length];
                 fileStream.Read(fileBytes, 0, fileBytes.Length);
 
-                using (var memoryStream = new MemoryStream(fileBytes))
+                using (var memoryStream = new MemoryStream(fileBytes, 0, fileBytes.Length, true, true))
                     FromStream(memoryStream);
             }
         }

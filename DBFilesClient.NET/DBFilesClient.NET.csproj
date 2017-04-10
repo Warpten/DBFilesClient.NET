@@ -93,6 +93,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions.cs" />
     <Compile Include="IStorage.cs" />
     <Compile Include="Types\IObjectType.cs" />
     <Compile Include="WDB2\Reader.cs" />

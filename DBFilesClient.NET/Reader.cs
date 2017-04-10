@@ -91,9 +91,9 @@ namespace DBFilesClient.NET
             ConstructorInfo fieldObjectCtor = null;
             if (typeCode == TypeCode.Object)
             {
-                var baseType = fieldType.BaseType;
-                while (baseType?.BaseType != null && baseType.BaseType.IsConstructedGenericType)
-                    baseType = baseType.BaseType;
+                var baseType = fieldType.GetTypeInfo().BaseType;
+                while (baseType?.GetTypeInfo().BaseType != null && baseType.GetTypeInfo().BaseType.IsConstructedGenericType)
+                    baseType = baseType.GetTypeInfo().BaseType;
 
                 if (baseType?.GetGenericTypeDefinition() != typeof(IObjectType<>))
                     throw new InvalidStructureException("Only object types inheriting IObjectType<T> can be loaded.");

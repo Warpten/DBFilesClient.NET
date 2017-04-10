@@ -39,7 +39,7 @@ namespace Tests
                         var countGetter = instanceType.GetProperty("Count").GetGetMethod();
                         var stopwatch = Stopwatch.StartNew();
                         var instance = Activator.CreateInstance(instanceType,
-                            $@".\DBFilesClient\{attr.FileName}.db2", true);
+                            $@"..\Debug\DBFilesClient\{attr.FileName}.db2", true);
                         stopwatch.Stop();
 
                         times.Add(stopwatch.ElapsedTicks);
