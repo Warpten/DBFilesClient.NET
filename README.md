@@ -10,24 +10,6 @@ The library supports WDBC (Vanilla+), WDB2 (Cata+), WDB5 (WoD+), and WDB6 (Legio
 
 ## Usage
 
-As well as exposing its standard `Storage<T>` type, the library exposes a `DBFileNameAttribute`. This attribute binds a file name to a structure. Use cases include loading a lot of files through reflection. The code below, snipped off the tests library, shows how to use this attribute.
-
-```csharp
-foreach (var type in Assembly.GetAssembly(typeof (ReaderTest)).GetTypes())
-{
-    if (!type.IsClass)
-        continue;
-
-    var attr = type.GetCustomAttribute<DBFileNameAttribute>();
-    if (attr == null)
-        continue;
-
-    var instanceType = typeof (Storage<>).MakeGenericType(type);
-    var instance = Activator.CreateInstance(instanceType, $@"{attr.FileName}.db2");
-    ...
-}
-```
-
 Regular instantiation goes by
 
 ```csharp
