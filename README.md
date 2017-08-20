@@ -102,6 +102,7 @@ public sealed class AreaTableEntry
 
 With added effort, assuming you had access to some sort of representation of the [CAS file system](https://wowdev.wiki/CASC), you would be able to map a field to a BLTE file entry.
 
+Other examples of `IObjectType<T>` usages can be found under the [test project](https://github.com/Warpten/DBFilesClient.NET/tree/master/Tests/DataTypes).
 
 ## Performance
 
@@ -116,7 +117,7 @@ We then add the amount of entries in the copy table.
 
 > Seed measurements as of commit af4909c4927d7fdec51660e9b029b13d92cfa39d
 > 
-> Made on an i7-7700HQ with 16 Gb of RAM.
+> Made on an i7-7700HQ with 16 GB of RAM (SSD).
 
 ```
 File name                        Average time to load     Minimum time       Maximum time       Record count
@@ -144,7 +145,7 @@ WMOAreaTable                     00:00:00.0181253         00:00:00.0113962   00:
 
 > Speed measurements as of commit f3d097706200a8f50b2236d3f68877e310e1f141
 > 
-> Measurements were made on an i3-2310M with 8 Gb of DDR3 RAM.
+> Measurements were made on an i3-2310M with 8 GB of DDR3 RAM (HDD).
 
 ```
 File name                        Average time to load     Minimum time       Maximum time       Record count
