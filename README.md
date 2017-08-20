@@ -6,7 +6,7 @@ The library supports WDBC (Vanilla+), WDB2 (Cata+), WDB5 (WoD+), and WDB6 (Legio
 
 ## Warning for 7.3.0.24473 (PTR) users
 
-Since PTR build 7.3.0.24473, the format of WDB5 files has once again changed - but this time, without a version bump. The solution the library implements to work around it is designed in an attempt to maintain backwards-compatibility with DB2 files from previous builds.
+Since PTR build 7.3.0.24473, the format of WDB6 files has once again changed - but this time, without a version bump. The solution the library implements to work around it is designed in an attempt to maintain backwards-compatibility with DB2 files from previous builds.
 This was implemented in commit [e346d6565](https://github.com/Warpten/DBFilesClient.NET/commit/e346d65656a1b14859b27e35f14650e7b5c4210c), and while that build fixes a relatively big bug in WDB2 handling, it will **not** be deployed to NuGet at least until 7.3.0 hits live.
 
 TL;DR: If you are not actively datamining PTR, stick to the [NuGet](https://www.nuget.org/packages/DBFilesClient.NET) package. I can only hope Blizzard pushes out WDB7 before 7.3.0 rolls out, for I have no idea how to efficiently handle this sudden change. -- 8/20/17
