@@ -80,6 +80,9 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="DataTypes\ForeignKey.cs" />
+    <Compile Include="DataTypes\Money.cs" />
+    <Compile Include="DataTypes\PackedColor.cs" />
     <Compile Include="Structures\CriteriaTreeEntry.cs" />
     <Compile Include="Structures\DBFileAttribute.cs" />
     <Compile Include="Structures\ItemEntry.cs" />

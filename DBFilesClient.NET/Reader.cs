@@ -57,7 +57,7 @@ namespace DBFilesClient.NET
             { TypeCode.Char, typeof (BinaryReader).GetMethod("ReadChar", Type.EmptyTypes) },
             { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) },
 
-            { TypeCode.String, typeof (Reader<T>).GetMethod("ReadTableString", Type.EmptyTypes) },
+            { TypeCode.String, typeof (BinaryReader).GetMethod("ReadString", Type.EmptyTypes) },
         };
 
         internal virtual MethodInfo GetPrimitiveLoader(Type typeInfo, int fieldIndex)
@@ -218,8 +218,7 @@ namespace DBFilesClient.NET
             return stringValue;
         }
 
-        // Needs to be public to be visible using Type.GetMethod(string, Type[])
-        public virtual string ReadTableString()
+        public override string ReadString()
         {
             // Store position of the next field in this record.
             var oldPosition = BaseStream.Position + 4;

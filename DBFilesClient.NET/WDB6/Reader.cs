@@ -1,5 +1,4 @@
 ﻿using System;
-using System.CodeDom;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -205,25 +204,6 @@ namespace DBFilesClient.NET.WDB6
             return arraySize;
         }
 
-        [StructLayout(LayoutKind.Explicit)]
-        internal struct CommonDataValue
-        {
-            [FieldOffset(0)]
-            public uint UInt32;
-            [FieldOffset(0)]
-            public int Int32;
-            [FieldOffset(0)]
-            public ushort UInt16;
-            [FieldOffset(0)]
-            public short Int16;
-            [FieldOffset(0)]
-            public float Float;
-            [FieldOffset(0)]
-            public sbyte SByte;
-            [FieldOffset(0)]
-            public byte Byte;
-        }
-
         internal class CommonData
         {
             private Dictionary<int, object> Values { get; }
@@ -238,15 +218,28 @@ namespace DBFilesClient.NET.WDB6
                 Values = new Dictionary<int, object>(count);
                 var expectedType = owner.ReadByte();
 
+                /// Starting with patch 7.3.0.24473 (PTR), this structure is now padded.
+                /// This is the only change as it was not enough to trigger a version update.
+                /// For now, we will peek for 0 bytes, since this block is not supposed contain
+                /// non-default values anyway, and skip accordingly.
+                ///
+                /// Note: The entire handling of the so-called "common block" is completely
+                /// shit but even to this day I have no idea how to better handle it.
+                /// Warpten, 8/20/17 2:06AM
+
                 for (var i = 0; i < count; ++i)
                 {
                     switch (expectedType)
                     {
                         case 1:
                             Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Int16 ? (object)owner.ReadInt16() : (object)owner.ReadUInt16();
+                            if (owner.PeekChar() == '\0')
+                                owner.BaseStream.Position += 2;
                             break;
                         case 2:
                             Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Byte ? (object)owner.ReadByte() : (object)owner.ReadSByte();
+                            if (owner.PeekChar() == '\0')
+                                owner.BaseStream.Position += 3;
                             break;
                         case 3:
                             Values[owner.ReadInt32()] = owner.ReadSingle();
@@ -262,8 +255,7 @@ namespace DBFilesClient.NET.WDB6
 
             public object TryGetValue(int key)
             {
-                object value;
-                if (Values.TryGetValue(key, out value))
+                if (Values.TryGetValue(key, out object value))
                     return value;
                 return null;
             }

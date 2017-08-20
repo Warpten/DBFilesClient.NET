@@ -86,9 +86,9 @@ namespace DBFilesClient.NET.WDB5
             return base.GetPrimitiveLoader(fieldInfo, fieldIndex);
         }
 
-        public override string ReadTableString()
+        public override string ReadString()
         {
-            return !FileHeader.HasStringTable ? ReadInlineString() : base.ReadTableString();
+            return !FileHeader.HasStringTable ? ReadInlineString() : base.ReadString();
         }
 
         internal Reader(Stream fileData) : base(fileData)

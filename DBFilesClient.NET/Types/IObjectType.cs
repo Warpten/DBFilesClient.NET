@@ -8,7 +8,7 @@
     /// <code>
     ///     public class ForeignKey<T, U> : IObjectType<U>
     ///     {
-    ///         public ForeignKey(T underlyingValue) : base(underlyingValue) { }
+    ///         public ForeignKey(U underlyingValue) : base(underlyingValue) { }
     /// 
     ///         public T Value => ...;
     ///     }

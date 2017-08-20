@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 
 namespace DBFilesClient.NET.WDB2
 {
@@ -24,9 +23,12 @@ namespace DBFilesClient.NET.WDB2
 
             FileHeader.HasStringTable = FileHeader.StringTableSize != 0;
 
-            // BaseStream.Position += 8 + (FileHeader.MaxIndex - FileHeader.MinIndex + 1) * (4 + 2);
+            BaseStream.Position += 8; // locale and copy table size (which is always 0 in this version)
 
             FileHeader.StringTableOffset = BaseStream.Length - FileHeader.StringTableSize;
+
+            if (FileHeader.MaxIndex != 0)
+                BaseStream.Position += (4 + 2) * (FileHeader.MaxIndex - FileHeader.MinIndex + 1);
         }
     }
 }
