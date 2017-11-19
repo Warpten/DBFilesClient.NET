@@ -146,11 +146,11 @@ namespace DBFilesClient.NET
                 throw new InvalidOperationException(
                     $"Structure {typeof(T).Name} is missing properties ({properties.Length} found, {FileHeader.FieldCount} expected).");
 
-            for (var fieldIndex = 0; fieldIndex < FileHeader.FieldCount; ++fieldIndex)
+            for (var propertyIndex = 0; propertyIndex < properties.Length; ++propertyIndex)
             {
-                var propertyInfo = properties[fieldIndex];
+                var propertyInfo = properties[propertyIndex];
 
-                var callExpression = GetSimpleReaderExpression(propertyInfo, fieldIndex, readerExpr);
+                var callExpression = GetSimpleReaderExpression(propertyInfo, propertyIndex, readerExpr);
 
                 if (!propertyInfo.PropertyType.IsArray)
                 {
@@ -160,7 +160,7 @@ namespace DBFilesClient.NET
                 }
                 else
                 {
-                    var arraySize = GetArraySize(propertyInfo, fieldIndex);
+                    var arraySize = GetArraySize(propertyInfo, propertyIndex);
 
                     var exitLabelExpr = Expression.Label();
                     var itrExpr = Expression.Variable(typeof(int));

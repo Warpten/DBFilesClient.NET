@@ -231,6 +231,9 @@ namespace DBFilesClient.NET.WDB6
                 {
                     switch (expectedType)
                     {
+                        case 0:
+                            Values[owner.ReadInt32()] = owner.ReadString();
+                            break;
                         case 1:
                             Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Int16 ? (object)owner.ReadInt16() : (object)owner.ReadUInt16();
                             if (owner.PeekChar() == '\0')
@@ -248,7 +251,7 @@ namespace DBFilesClient.NET.WDB6
                             Values[owner.ReadInt32()] = fieldTypeCode == TypeCode.Int32 ? (object)owner.ReadInt32() : (object)owner.ReadUInt32();
                             break;
                         default:
-                            throw new InvalidOperationException();
+                            throw new NotSupportedException($"Type {expectedType} in the common block is not supported!");
                     }
                 }
             }
