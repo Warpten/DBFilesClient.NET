@@ -4,6 +4,8 @@ namespace DBFilesClient.NET.WDB2
 {
     internal class Reader<T> : WDBC.Reader<T> where T : class, new()
     {
+        protected override bool EnforceStructureMatch { get; } = false;
+
         internal Reader(Stream fileStream) : base(fileStream)
         {
         }

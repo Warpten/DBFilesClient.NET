@@ -12,6 +12,8 @@ namespace DBFilesClient.NET
 {
     public abstract class Reader<T> : BinaryReader where T : class, new()
     {
+        protected virtual bool EnforceStructureMatch { get; } = true;
+
         internal class Header
         {
             // public int Magic               { get; set; }
@@ -138,15 +140,15 @@ namespace DBFilesClient.NET
             // Instantiate the return value.
             expressions.Add(Expression.Assign(resultExpr, Expression.New(typeof(T))));
 
-            var fields = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToArray();
+            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToArray();
 
-            if (fields.Length < FileHeader.FieldCount)
+            if (properties.Length < FileHeader.FieldCount && EnforceStructureMatch)
                 throw new InvalidOperationException(
-                    $"Structure {typeof(T).Name} is missing properties ({fields.Length} found, {FileHeader.FieldCount} expected");
+                    $"Structure {typeof(T).Name} is missing properties ({properties.Length} found, {FileHeader.FieldCount} expected).");
 
             for (var fieldIndex = 0; fieldIndex < FileHeader.FieldCount; ++fieldIndex)
             {
-                var propertyInfo = fields[fieldIndex];
+                var propertyInfo = properties[fieldIndex];
 
                 var callExpression = GetSimpleReaderExpression(propertyInfo, fieldIndex, readerExpr);
 
