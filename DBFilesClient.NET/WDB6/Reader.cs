@@ -70,9 +70,9 @@ namespace DBFilesClient.NET.WDB6
             BaseStream.Position = BaseStream.Length - FileHeader.CommonDataTableSize;
 
             var columnCount = ReadInt32();
-            var fields = typeof (T).GetFields(BindingFlags.Public | BindingFlags.Instance).ToArray();
+            var fields = typeof (T).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToArray();
             for (var i = 0; i < columnCount; ++i)
-                _nonZeroValues[i] = new CommonData(this, fields[i].FieldType);
+                _nonZeroValues[i] = new CommonData(this, fields[i].PropertyType);
 
             // Generate an Action<Reader<T>, T, int>
             var expressionList = new List<Expression>();
@@ -81,12 +81,12 @@ namespace DBFilesClient.NET.WDB6
             var structureExpr  = Expression.Parameter(typeof (T));
             for (var i = FileHeader.FieldCount; i < FileHeader.TotalFieldCount; ++i)
             {
-                var fieldInfo = fields[i];
-                if (fieldInfo.FieldType.IsArray)
+                var propertyInfo = fields[i];
+                if (propertyInfo.PropertyType.IsArray)
                     throw new InvalidOperationException("Array fields in off-stream data are not handled");
 
                 MethodInfo convertMethod = null;
-                switch (Type.GetTypeCode(fieldInfo.FieldType))
+                switch (Type.GetTypeCode(propertyInfo.PropertyType))
                 {
                     case TypeCode.Int32:
                         convertMethod = typeof(Convert).GetMethod("ToInt32", new[] {typeof(object)});
@@ -124,8 +124,8 @@ namespace DBFilesClient.NET.WDB6
                     Expression.IfThen(
                         Expression.NotEqual(localExpr, Expression.Constant(null)),
                         Expression.Assign(
-                            Expression.MakeMemberAccess(structureExpr, fieldInfo),
-                            Expression.Convert(localExpr, fieldInfo.FieldType)))));
+                            Expression.MakeMemberAccess(structureExpr, propertyInfo),
+                            Expression.Convert(localExpr, propertyInfo.PropertyType)))));
             }
 
             var lambda = Expression.Lambda<Action<Reader<T>, T, int>>(
@@ -176,23 +176,23 @@ namespace DBFilesClient.NET.WDB6
             TriggerRecordLoaded(key, record);
         }
 
-        protected override int GetArraySize(FieldInfo fieldInfo, int fieldIndex)
+        protected override int GetArraySize(PropertyInfo propertyInfo, int fieldIndex)
         {
             var currentField = FieldMeta[fieldIndex];
 
             var arraySize = 1;
             if (fieldIndex + 1 < FieldMeta.Length)
                 arraySize = (FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
-            else if (fieldInfo.FieldType.IsArray)
+            else if (propertyInfo.PropertyType.IsArray)
             {
                 var largestFieldSize = FieldMeta.Max(k => k.ByteSize);
                 var smallestFieldSize = FieldMeta.Min(k => k.ByteSize);
 
                 if (smallestFieldSize != largestFieldSize)
                 {
-                    var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+                    var marshalAttr = propertyInfo.GetCustomAttribute<MarshalAsAttribute>();
                     if (marshalAttr == null)
-                        throw new InvalidStructureException($"{typeof(T).Name}.{fieldInfo.Name}'s size can't be guessed!");
+                        throw new InvalidStructureException($"{typeof(T).Name}.{propertyInfo.Name}'s size can't be guessed!");
 
                     if (marshalAttr.SizeConst != 0)
                         arraySize = marshalAttr.SizeConst;

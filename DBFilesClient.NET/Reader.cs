@@ -65,9 +65,9 @@ namespace DBFilesClient.NET
             return _binaryReaderMethods[Type.GetTypeCode(typeInfo)];
         }
 
-        internal virtual MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
+        internal virtual MethodInfo GetPrimitiveLoader(PropertyInfo propertyInfo, int fieldIndex)
         {
-            var fieldType = fieldInfo.FieldType;
+            var fieldType = propertyInfo.PropertyType;
             if (fieldType.IsArray)
                 fieldType = fieldType.GetElementType();
 
@@ -75,14 +75,13 @@ namespace DBFilesClient.NET
             if (typeCode == TypeCode.Object)
                 return null;
 
-            MethodInfo methodInfo;
-            _binaryReaderMethods.TryGetValue(typeCode, out methodInfo);
+            _binaryReaderMethods.TryGetValue(typeCode, out MethodInfo methodInfo);
             return methodInfo;
         }
 
-        private Expression GetSimpleReaderExpression(FieldInfo fieldInfo, int fieldIndex, Expression readerExpr)
+        private Expression GetSimpleReaderExpression(PropertyInfo propertyInfo, int fieldIndex, Expression readerExpr)
         {
-            var fieldType = fieldInfo.FieldType;
+            var fieldType = propertyInfo.PropertyType;
             if (fieldType.IsArray)
                 fieldType = fieldType.GetElementType();
 
@@ -106,7 +105,7 @@ namespace DBFilesClient.NET
             Expression callExpression;
             if (typeCode != TypeCode.Object)
             {
-                var callVirt = GetPrimitiveLoader(fieldInfo, fieldIndex);
+                var callVirt = GetPrimitiveLoader(propertyInfo, fieldIndex);
 
                 callExpression = Expression.Call(readerExpr, callVirt);
             }
@@ -139,27 +138,27 @@ namespace DBFilesClient.NET
             // Instantiate the return value.
             expressions.Add(Expression.Assign(resultExpr, Expression.New(typeof(T))));
 
-            var fields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance).ToArray();
+            var fields = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToArray();
 
             if (fields.Length < FileHeader.FieldCount)
                 throw new InvalidOperationException(
-                    $"Structure {typeof(T).Name} is missing fields ({fields.Length} found, {FileHeader.FieldCount} expected");
+                    $"Structure {typeof(T).Name} is missing properties ({fields.Length} found, {FileHeader.FieldCount} expected");
 
             for (var fieldIndex = 0; fieldIndex < FileHeader.FieldCount; ++fieldIndex)
             {
-                var fieldInfo = fields[fieldIndex];
+                var propertyInfo = fields[fieldIndex];
 
-                var callExpression = GetSimpleReaderExpression(fieldInfo, fieldIndex, readerExpr);
+                var callExpression = GetSimpleReaderExpression(propertyInfo, fieldIndex, readerExpr);
 
-                if (!fieldInfo.FieldType.IsArray)
+                if (!propertyInfo.PropertyType.IsArray)
                 {
                     expressions.Add(Expression.Assign(
-                        Expression.MakeMemberAccess(resultExpr, fieldInfo),
-                        Expression.Convert(callExpression, fieldInfo.FieldType)));
+                        Expression.MakeMemberAccess(resultExpr, propertyInfo),
+                        Expression.Convert(callExpression, propertyInfo.PropertyType)));
                 }
                 else
                 {
-                    var arraySize = GetArraySize(fieldInfo, fieldIndex);
+                    var arraySize = GetArraySize(propertyInfo, fieldIndex);
 
                     var exitLabelExpr = Expression.Label();
                     var itrExpr = Expression.Variable(typeof(int));
@@ -167,8 +166,8 @@ namespace DBFilesClient.NET
                         new[] { itrExpr },
                         // ReSharper disable once AssignNullToNotNullAttribute
                         Expression.Assign(
-                            Expression.MakeMemberAccess(resultExpr, fieldInfo),
-                            Expression.New(fieldInfo.FieldType.GetConstructor(new[] { typeof(int) }),
+                            Expression.MakeMemberAccess(resultExpr, propertyInfo),
+                            Expression.New(propertyInfo.PropertyType.GetConstructor(new[] { typeof(int) }),
                                 Expression.Constant(arraySize))
                             ),
 
@@ -177,9 +176,9 @@ namespace DBFilesClient.NET
                             Expression.IfThenElse(
                                 Expression.LessThan(itrExpr, Expression.Constant(arraySize)),
                                 Expression.Assign(
-                                    Expression.ArrayAccess(Expression.MakeMemberAccess(resultExpr, fieldInfo),
+                                    Expression.ArrayAccess(Expression.MakeMemberAccess(resultExpr, propertyInfo),
                                         Expression.PostIncrementAssign(itrExpr)),
-                                    Expression.Convert(callExpression, fieldInfo.FieldType.GetElementType())),
+                                    Expression.Convert(callExpression, propertyInfo.PropertyType.GetElementType())),
                                 Expression.Break(exitLabelExpr)),
                             exitLabelExpr)
                         ));
@@ -191,11 +190,11 @@ namespace DBFilesClient.NET
             RecordReader = Expression.Lambda<Func<Reader<T>, T>>(expressionBlock, readerExpr).Compile();
         }
 
-        protected virtual int GetArraySize(FieldInfo fieldInfo, int fieldIndex)
+        protected virtual int GetArraySize(PropertyInfo propertyInfo, int fieldIndex)
         {
-            var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+            var marshalAttr = propertyInfo.GetCustomAttribute<MarshalAsAttribute>();
             if (marshalAttr == null)
-                throw new InvalidOperationException($"Field '{typeof(T).Name}.{fieldInfo.Name} is an array and needs to be decorated with MarshalAsAttribute!");
+                throw new InvalidOperationException($"Field '{typeof(T).Name}.{propertyInfo.Name} is an array and needs to be decorated with MarshalAsAttribute!");
 
             return marshalAttr.SizeConst;
         }

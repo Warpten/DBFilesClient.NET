@@ -47,11 +47,11 @@ namespace DBFilesClient.NET.WDB5
             return base.GetPrimitiveLoader(fieldType, fieldIndex);
         }
 
-        internal override MethodInfo GetPrimitiveLoader(FieldInfo fieldInfo, int fieldIndex)
+        internal override MethodInfo GetPrimitiveLoader(PropertyInfo propertyInfo, int fieldIndex)
         {
             var fieldData = FieldMeta[fieldIndex];
 
-            var fieldType = fieldInfo.FieldType;
+            var fieldType = propertyInfo.PropertyType;
             if (fieldType.IsArray)
                 fieldType = fieldType.GetElementType();
 
@@ -78,12 +78,12 @@ namespace DBFilesClient.NET.WDB5
                             : base.GetPrimitiveLoader(typeof (byte), fieldIndex);
                     default:
                         throw new ArgumentOutOfRangeException(
-                            $@"Field {fieldInfo.Name} has its metadata expose as an unsupported {
+                            $@"Field {propertyInfo.Name} has its metadata expose as an unsupported {
                                 fieldData.ByteSize}-bytes field!");
                 }
             }
 
-            return base.GetPrimitiveLoader(fieldInfo, fieldIndex);
+            return base.GetPrimitiveLoader(propertyInfo, fieldIndex);
         }
 
         public override string ReadString()
@@ -259,23 +259,23 @@ namespace DBFilesClient.NET.WDB5
             }
         }
 
-        protected override int GetArraySize(FieldInfo fieldInfo, int fieldIndex)
+        protected override int GetArraySize(PropertyInfo propertyInfo, int fieldIndex)
         {
             var currentField = FieldMeta[fieldIndex];
 
             var arraySize = 1;
             if (fieldIndex + 1 < FieldMeta.Length)
                 arraySize = (FieldMeta[fieldIndex + 1].Position - currentField.Position) / currentField.ByteSize;
-            else if (fieldInfo.FieldType.IsArray)
+            else if (propertyInfo.PropertyType.IsArray)
             {
                 var largestFieldSize = FieldMeta.Max(k => k.ByteSize);
                 var smallestFieldSize = FieldMeta.Min(k => k.ByteSize);
 
                 if (smallestFieldSize != largestFieldSize)
                 {
-                    var marshalAttr = fieldInfo.GetCustomAttribute<MarshalAsAttribute>();
+                    var marshalAttr = propertyInfo.GetCustomAttribute<MarshalAsAttribute>();
                     if (marshalAttr == null)
-                        throw new InvalidStructureException($"{typeof(T).Name}.{fieldInfo.Name}'s size can't be guessed!");
+                        throw new InvalidStructureException($"{typeof(T).Name}.{propertyInfo.Name}'s size can't be guessed!");
 
                     if (marshalAttr.SizeConst != 0)
                         arraySize = marshalAttr.SizeConst;

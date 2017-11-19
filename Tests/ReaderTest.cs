@@ -70,11 +70,11 @@ namespace Tests
 
         private static void PrintRecord<T>(int key, T instance)
         {
-            foreach (var field in typeof(T).GetFields())
+            foreach (var field in typeof(T).GetProperties())
             {
                 var value = field.GetValue(instance);
 
-                if (field.FieldType.IsArray)
+                if (field.PropertyType.IsArray)
                 {
                     var enumerableValue = value as IEnumerable;
                     var valueBuilder = new List<string>();

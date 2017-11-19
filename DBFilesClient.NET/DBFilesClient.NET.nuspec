@@ -8,6 +8,7 @@
     <owners>Warpten</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A blazing-fast DBC and DB2 file loader for World of Warcraft files.</description>
+    <projectUrl>http://github.com/Warpten/DBFilesClient.NET</projectUrl>
     <tags>DBC DB2 WDBC WDB2 WDB3 WDB4 WDB5 WOW</tags>
   </metadata>
 </package>

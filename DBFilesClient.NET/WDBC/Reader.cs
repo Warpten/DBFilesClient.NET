@@ -24,10 +24,10 @@ namespace DBFilesClient.NET.WDBC
             FileHeader.HasStringTable = FileHeader.StringTableSize != 0;
             FileHeader.StringTableOffset = BaseStream.Length - FileHeader.StringTableSize;
 
-            foreach (var fieldInfo in typeof (T).GetFields(BindingFlags.Public | BindingFlags.Instance))
+            foreach (var propertyInfo in typeof (T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                if (fieldInfo.FieldType.IsArray)
-                    FileHeader.FieldCount += fieldInfo.GetCustomAttribute<MarshalAsAttribute>()?.SizeConst ?? 0;
+                if (propertyInfo.PropertyType.IsArray)
+                    FileHeader.FieldCount += propertyInfo.GetCustomAttribute<MarshalAsAttribute>()?.SizeConst ?? 0;
                 else
                     ++FileHeader.FieldCount;
             }
