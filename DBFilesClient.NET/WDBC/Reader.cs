@@ -27,7 +27,7 @@ namespace DBFilesClient.NET.WDBC
             foreach (var propertyInfo in typeof (T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (propertyInfo.PropertyType.IsArray)
-                    FileHeader.FieldCount += propertyInfo.GetCustomAttribute<MarshalAsAttribute>()?.SizeConst ?? 0;
+                    FileHeader.FieldCount += propertyInfo.GetCustomAttribute<ArraySizeAttribute>()?.SizeConst ?? 0;
                 else
                     ++FileHeader.FieldCount;
             }

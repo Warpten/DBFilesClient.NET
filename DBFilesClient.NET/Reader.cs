@@ -192,9 +192,9 @@ namespace DBFilesClient.NET
 
         protected virtual int GetArraySize(PropertyInfo propertyInfo, int fieldIndex)
         {
-            var marshalAttr = propertyInfo.GetCustomAttribute<MarshalAsAttribute>();
+            var marshalAttr = propertyInfo.GetCustomAttribute<ArraySizeAttribute>();
             if (marshalAttr == null)
-                throw new InvalidOperationException($"Field '{typeof(T).Name}.{propertyInfo.Name} is an array and needs to be decorated with MarshalAsAttribute!");
+                throw new InvalidOperationException($"Property '{typeof(T).Name}.{propertyInfo.Name} is an array and needs to be decorated with ArraySizeAttribute!");
 
             return marshalAttr.SizeConst;
         }

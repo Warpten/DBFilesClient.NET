@@ -273,7 +273,7 @@ namespace DBFilesClient.NET.WDB5
 
                 if (smallestFieldSize != largestFieldSize)
                 {
-                    var marshalAttr = propertyInfo.GetCustomAttribute<MarshalAsAttribute>();
+                    var marshalAttr = propertyInfo.GetCustomAttribute<ArraySizeAttribute>();
                     if (marshalAttr == null)
                         throw new InvalidStructureException($"{typeof(T).Name}.{propertyInfo.Name}'s size can't be guessed!");
 
