@@ -258,7 +258,8 @@ namespace DBFilesClient.NET.WDB6
 
             public object TryGetValue(int key)
             {
-                if (Values.TryGetValue(key, out object value))
+                object value;
+                if (Values.TryGetValue(key, out value))
                     return value;
                 return null;
             }
