@@ -192,7 +192,7 @@ namespace DBFilesClient.NET.WDB5
             BaseStream.Position = copyTablePosition;
             ArraySegment<byte> underlyingBuffer;
             MemoryStream memStream = BaseStream as MemoryStream;
-            if (memStream!=null && memStream.TryGetBuffer(out underlyingBuffer))
+            if (memStream != null && memStream.TryGetBuffer(out underlyingBuffer))
             {
                 for (var i = 0; i < FileHeader.CopyTableSize; ++i)
                 {
