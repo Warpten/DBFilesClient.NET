@@ -77,7 +77,8 @@ namespace DBFilesClient.NET
             if (typeCode == TypeCode.Object)
                 return null;
 
-            _binaryReaderMethods.TryGetValue(typeCode, out MethodInfo methodInfo);
+            MethodInfo methodInfo;
+            _binaryReaderMethods.TryGetValue(typeCode, out methodInfo);
             return methodInfo;
         }
 
