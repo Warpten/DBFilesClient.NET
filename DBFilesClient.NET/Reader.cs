@@ -225,7 +225,8 @@ namespace DBFilesClient.NET
             var oldPosition = BaseStream.Position + 4;
 
             // Compute offset to string in table.
-            BaseStream.Position = ReadInt32() + FileHeader.StringTableOffset;
+            var delta = ReadInt32();
+            BaseStream.Position = delta + FileHeader.StringTableOffset;
 
             // Read the string inline.
             var stringValue = ReadInlineString();

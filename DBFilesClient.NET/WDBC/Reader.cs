@@ -39,12 +39,14 @@ namespace DBFilesClient.NET.WDBC
         {
             for (var i = 0; i < FileHeader.RecordCount; ++i)
             {
+                var oldPosition = BaseStream.Position;
+
                 var key = ReadInt32();
                 BaseStream.Position -= 4;
 
                 TriggerRecordLoaded(key, RecordReader(this));
 
-                BaseStream.Position += FileHeader.RecordSize;
+                BaseStream.Position = oldPosition + FileHeader.RecordSize;
             }
         }
     }

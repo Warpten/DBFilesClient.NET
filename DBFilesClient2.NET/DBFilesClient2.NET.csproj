@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{8192CBF2-3A59-4A06-97FF-6A6F14CB0ACF}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DBFilesClient2.NET</RootNamespace>
+    <AssemblyName>DBFilesClient2.NET</AssemblyName>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Attributes\IndexAttribute.cs" />
+    <Compile Include="BaseStorageReader.cs" />
+    <Compile Include="BinaryReader.cs" />
+    <Compile Include="BitReader.cs" />
+    <Compile Include="Exceptions\InvalidStructureException.cs" />
+    <Compile Include="Exceptions\StorageLoadException.cs" />
+    <Compile Include="Implementations\CommonTable.cs" />
+    <Compile Include="Implementations\IStorageHeader.cs" />
+    <Compile Include="Implementations\IStorageReader.cs" />
+    <Compile Include="Implementations\Serializers\MemberProvider.cs" />
+    <Compile Include="Implementations\Serializers\WDCSerializer.cs" />
+    <Compile Include="Implementations\WDB2\WDB2Header.cs" />
+    <Compile Include="Implementations\WDB2\WDB2Reader.cs" />
+    <Compile Include="Implementations\WDB5\WDB5Header.cs" />
+    <Compile Include="Implementations\WDB5\WDB5Reader.cs" />
+    <Compile Include="Implementations\WDB6\WDB6Header.cs" />
+    <Compile Include="Implementations\WDB6\WDB6Reader.cs" />
+    <Compile Include="Implementations\WDBC\WDBCHeader.cs" />
+    <Compile Include="Implementations\WDBC\WDBCReader.cs" />
+    <Compile Include="Implementations\WDC1\WDC1Header.cs" />
+    <Compile Include="Implementations\WDC1\WDC1Reader.cs" />
+    <Compile Include="Internals\Extensions.cs" />
+    <Compile Include="Internals\FieldCompression.cs" />
+    <Compile Include="Internals\FieldMetadata.cs" />
+    <Compile Include="Implementations\Serializers\ISerializerFactory.cs" />
+    <Compile Include="Internals\FragmentStream.cs" />
+    <Compile Include="Internals\UnsafeNativeMethods.cs" />
+    <Compile Include="Implementations\Serializers\WDBSerializer.cs" />
+    <Compile Include="Locales.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Internals\SizeCache.cs" />
+    <Compile Include="Storage.cs" />
+    <Compile Include="StorageOptions.cs" />
+    <Compile Include="Attributes\StoragePresenceAttribute.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

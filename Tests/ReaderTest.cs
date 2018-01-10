@@ -93,5 +93,24 @@ namespace Tests
             }
             Console.WriteLine();
         }
+
+        public sealed class GameObjectDisplayInfoEntry
+        {
+            public int ID { get; set; }
+            public string Filename { get; set; }
+            [ArraySize(SizeConst = 10)]
+            public int[] SoundId { get; set; }
+            [ArraySize(SizeConst = 6)]
+            public float[] BoundingBox { get; set; }
+            public float UnkFloat0 { get; set; }
+            public float UnkFloat2 { get; set; }
+            public float UnkFloat1 { get; set; }
+        }
+
+        [TestMethod]
+        public void TestGODI()
+        {
+            var storage = new Storage<GameObjectDisplayInfoEntry>(@"D:\Repositories\omfg.gg\Build3\bin\RelWithDebInfo\dbc\GameObjectDisplayInfo.dbc");
+        }
     }
 }
