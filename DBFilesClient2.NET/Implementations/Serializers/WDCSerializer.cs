@@ -59,110 +59,112 @@ namespace DBFilesClient2.NET.Implementations.Serializers
                 switch (memberMeta.Compression)
                 {
                     case MemberCompression.None:
-                    {
-                        if (!memberMeta.Type.IsArray)
                         {
-                            expressionList.Add(Expression.Assign(
-                                memberAccessExpr,
-                                readExpr));
-                        }
-                        else
-                        {
-                            var exitLabelExpr = Expression.Label();
-                            var itrExpr = Expression.Variable(typeof(int));
-                            var loopMax = Expression.Constant(memberMeta.GetArraySize());
-                            expressionList.Add(Expression.Block(
-                                new[] { itrExpr },
-                                // ReSharper disable once AssignNullToNotNullAttribute
-                                Expression.Assign(
+                            if (!memberMeta.Type.IsArray)
+                            {
+                                expressionList.Add(Expression.Assign(
                                     memberAccessExpr,
-                                    Expression.New(memberMeta.Type.GetConstructor(new[] { typeof(int) }), loopMax)),
+                                    readExpr));
+                            }
+                            else
+                            {
+                                var exitLabelExpr = Expression.Label();
+                                var itrExpr = Expression.Variable(typeof(int));
+                                var loopMax = Expression.Constant(memberMeta.GetArraySize());
+                                expressionList.Add(Expression.Block(
+                                    new[] { itrExpr },
+                                    // ReSharper disable once AssignNullToNotNullAttribute
+                                    Expression.Assign(
+                                        memberAccessExpr,
+                                        Expression.New(memberMeta.Type.GetConstructor(new[] { typeof(int) }), loopMax)),
 
-                                Expression.Assign(itrExpr, Expression.Constant(0)),
-                                Expression.Loop(
-                                    Expression.IfThenElse(
-                                        Expression.LessThan(itrExpr, loopMax),
-                                        Expression.Assign(
-                                            Expression.ArrayAccess(memberAccessExpr, Expression.PostIncrementAssign(itrExpr)),
-                                            readExpr),
-                                        Expression.Break(exitLabelExpr)),
-                                    exitLabelExpr)
-                            ));
+                                    Expression.Assign(itrExpr, Expression.Constant(0)),
+                                    Expression.Loop(
+                                        Expression.IfThenElse(
+                                            Expression.LessThan(itrExpr, loopMax),
+                                            Expression.Assign(
+                                                Expression.ArrayAccess(memberAccessExpr, Expression.PostIncrementAssign(itrExpr)),
+                                                readExpr),
+                                            Expression.Break(exitLabelExpr)),
+                                        exitLabelExpr)
+                                ));
+                            }
+                            break;
                         }
-                        break;
-                    }
                     case MemberCompression.Bitpacked:
-                    {
                         expressionList.Add(Expression.Assign(memberAccessExpr, Expression.Convert(readExpr, memberMeta.BaseType)));
                         break;
-                    }
                     case MemberCompression.BitpackedIndexed:
-                    {
-                        expressionList.Add(Expression.Assign(
-                            scrubberExpr,
-                            Expression.Add(
-                                bitposExpr,
-                                Expression.Constant((long)memberMeta.BitSize))));
-
-                        //! TODO: Make the additions a single constant - this is for debugging
-                        var seekExpr = Expression.Add(
-                            Expression.Add(
-                                Expression.Constant(reader.Header.PalletTable.StartOffset),
-                                Expression.Constant(memberMeta.AdditionalDataOffset)),
-                            Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
-                        expressionList.Add(Expression.Assign(positionExpr, seekExpr));
-                        expressionList.Add(Expression.Assign(
-                            memberAccessExpr,
-                            GetBaseReader(memberMeta.MemberInfo, readerExpr)));
-
-                        expressionList.Add(Expression.Assign(
-                            bitposExpr,
-                            scrubberExpr));
-                        break;
-                    }
+                        {
+                            // var bitAmount = memberMeta.BitSize % 8;
+                            // var byteAmount = memberMeta.ByteSize / 8;
+                            // 
+                            // expressionList.Add(Expression.Assign(
+                            //     scrubberExpr,
+                            //     Expression.Add(
+                            //         bitposExpr,
+                            //         Expression.Constant((long)memberMeta.BitSize))));
+                            // 
+                            // //! TODO: Make the additions a single constant - this is for debugging
+                            // var seekExpr = Expression.Add(
+                            //     Expression.Add(
+                            //         Expression.Constant(reader.Header.PalletTable.StartOffset),
+                            //         Expression.Constant(memberMeta.AdditionalDataOffset)),
+                            //     Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
+                            // expressionList.Add(Expression.Assign(positionExpr, seekExpr));
+                            // expressionList.Add(Expression.Assign(
+                            //     memberAccessExpr,
+                            //     GetBaseReader(memberMeta.MemberInfo, readerExpr)));
+                            // 
+                            // // expressionList.Add(Expression.Assign(positionExpr, Expression.Constant()))
+                            // expressionList.Add(Expression.Assign(
+                            //     bitposExpr,
+                            //     scrubberExpr));
+                            break;
+                        }
                     case MemberCompression.BitpackedIndexedArray:
-                    {
-                        expressionList.Add(Expression.Assign(
-                            scrubberExpr,
-                            Expression.Add(
-                                bitposExpr,
-                                Expression.Constant((long)memberMeta.BitSize))));
-
-                        var seekExpr = Expression.Add(
-                        Expression.Add(
-                            Expression.Constant(reader.Header.PalletTable.StartOffset),
-                            Expression.Constant(memberMeta.AdditionalDataOffset)),
-                        Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
-                        expressionList.Add(Expression.Assign(positionExpr, seekExpr));
-
-                        var exitLabelExpr = Expression.Label();
-                        var itrExpr = Expression.Variable(typeof(int));
-                        expressionList.Add(Expression.Block(
-                            new[] { itrExpr },
-                            // ReSharper disable once AssignNullToNotNullAttribute
-                            Expression.Assign(
-                                memberAccessExpr,
-                                Expression.New(memberMeta.Type.GetConstructor(new[] { typeof(int) }),
-                                    Expression.Constant(memberMeta.GetArraySize()))
-                                ),
-
-                            Expression.Assign(itrExpr, Expression.Constant(0)),
-                            Expression.Loop(
-                                Expression.IfThenElse(
-                                    Expression.LessThan(itrExpr, Expression.Constant(memberMeta.GetArraySize())),
-                                    Expression.Assign(
-                                        Expression.ArrayAccess(memberAccessExpr,
-                                            Expression.PostIncrementAssign(itrExpr)),
-                                        Expression.Convert(GetBaseReader(memberMeta.MemberInfo, readerExpr), memberMeta.BaseType)),
-                                    Expression.Break(exitLabelExpr)),
-                                exitLabelExpr)
-                        ));
-
-                        expressionList.Add(Expression.Assign(
-                            bitposExpr,
-                            scrubberExpr));
-                        break;
-                    }
+                        {
+                            // expressionList.Add(Expression.Assign(
+                            //     scrubberExpr,
+                            //     Expression.Add(
+                            //         bitposExpr,
+                            //         Expression.Constant((long)memberMeta.BitSize))));
+                            // 
+                            // var seekExpr = Expression.Add(
+                            // Expression.Add(
+                            //     Expression.Constant(reader.Header.PalletTable.StartOffset),
+                            //     Expression.Constant(memberMeta.AdditionalDataOffset)),
+                            // Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
+                            // expressionList.Add(Expression.Assign(positionExpr, seekExpr));
+                            // 
+                            // var exitLabelExpr = Expression.Label();
+                            // var itrExpr = Expression.Variable(typeof(int));
+                            // expressionList.Add(Expression.Block(
+                            //     new[] { itrExpr },
+                            //     // ReSharper disable once AssignNullToNotNullAttribute
+                            //     Expression.Assign(
+                            //         memberAccessExpr,
+                            //         Expression.New(memberMeta.Type.GetConstructor(new[] { typeof(int) }),
+                            //             Expression.Constant(memberMeta.GetArraySize()))
+                            //         ),
+                            // 
+                            //     Expression.Assign(itrExpr, Expression.Constant(0)),
+                            //     Expression.Loop(
+                            //         Expression.IfThenElse(
+                            //             Expression.LessThan(itrExpr, Expression.Constant(memberMeta.GetArraySize())),
+                            //             Expression.Assign(
+                            //                 Expression.ArrayAccess(memberAccessExpr,
+                            //                     Expression.PostIncrementAssign(itrExpr)),
+                            //                 Expression.Convert(GetBaseReader(memberMeta.MemberInfo, readerExpr), memberMeta.BaseType)),
+                            //             Expression.Break(exitLabelExpr)),
+                            //         exitLabelExpr)
+                            // ));
+                            // 
+                            // expressionList.Add(Expression.Assign(
+                            //     bitposExpr,
+                            //     scrubberExpr));
+                            break;
+                        }
                     // Skip common data
                     case MemberCompression.CommonData:
                     {
@@ -221,8 +223,9 @@ namespace DBFilesClient2.NET.Implementations.Serializers
 
             var positionExpr = Expression.MakeMemberAccess(readerExpr, MemberProvider.BinaryReaderPosition);
 
-            var memberIndex = 0;
+            var valueOffsetExpr = Expression.Variable(typeof(long), "valueOffset");
 
+            var memberIndex = 0;
             foreach (var memberMeta in reader.TypeMembers)
             {
                 if (reader.Header.IndexTable.Exists && memberMeta.MemberInfo.GetCustomAttribute<IndexAttribute>() != null)
@@ -238,18 +241,12 @@ namespace DBFilesClient2.NET.Implementations.Serializers
                     var offsetExpression = Expression.Call(commonTableExpr,
                         typeof(ICommonTable<TKey, TValue>).GetMethod("GetMemberOffset", BindingFlags.Public | BindingFlags.Instance),
                         new Expression[] { Expression.Constant(memberIndex), keyExpr });
-
-                    var subBlock = new Expression[2];
-
-                    var valueOffsetExpr = Expression.Variable(typeof(long), "valueOffset");
-
-                    subBlock[0] = Expression.Assign(valueOffsetExpr, offsetExpression);
-                    subBlock[1] = Expression.IfThen(Expression.GreaterThan(valueOffsetExpr, Expression.Constant(0L)),
+    
+                    expressionList.Add(Expression.Assign(valueOffsetExpr, offsetExpression));
+                    expressionList.Add(Expression.IfThen(Expression.GreaterThan(valueOffsetExpr, Expression.Constant(0L)),
                         Expression.Block(
                             Expression.Assign(positionExpr, valueOffsetExpr),
-                            Expression.Assign(memberAccessExpr, readValueExpr)));
-
-                    expressionList.Add(Expression.Block(new[] { valueOffsetExpr }, subBlock));
+                            Expression.Assign(memberAccessExpr, readValueExpr))));
                 }
 
                 ++memberIndex;
@@ -258,7 +255,7 @@ namespace DBFilesClient2.NET.Implementations.Serializers
             if (expressionList.Count == 0)
                 throw new InvalidOperationException();
 
-            var body = Expression.Block(new[] { keyExpr, valueExpr, commonTableExpr, readerExpr }, expressionList);
+            var body = Expression.Block(new[] { valueOffsetExpr }, expressionList);
             var block = Expression.Lambda<Action<TKey, TValue, ICommonTable<TKey, TValue>, BinaryReader>>(body, keyExpr, valueExpr, commonTableExpr, readerExpr);
 
             _commonTableDeserializer = block.Compile();

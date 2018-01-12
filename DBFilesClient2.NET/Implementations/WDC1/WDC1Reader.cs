@@ -201,7 +201,13 @@ namespace DBFilesClient2.NET.Implementations.WDC1
                         Serializer.SetKey(newRecord, newKey);
 
                     if (_header.CommonTable.Exists)
+                    {
+                        var oldPosition = reader.BaseStream.Position;
+
                         Serializer.CommonTableDeserializer(newKey, newRecord, CommonTable, reader);
+
+                        reader.BaseStream.Position = oldPosition;
+                    }
 
                     OnRecordLoaded(newKey, newRecord);
 

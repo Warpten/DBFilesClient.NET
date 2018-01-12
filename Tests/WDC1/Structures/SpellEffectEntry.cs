@@ -12,9 +12,9 @@ namespace DBFilesClient.NET.UnitTests.WDC1.Structures
         public int EffectIndex { get; set; }
         public int ApplyAuraName { get; set; }
         public int DifficultyID { get; set; }
-        public int Amplitude { get; set; }
+        public float Amplitude { get; set; }
         public int AuraPeriod { get; set; }
-        public int BonusCoefficientFromSP { get; set; }
+        public float BonusCoefficientFromSP { get; set; }
         public float ChainAmplitude { get; set; }
         public int ChainTargets { get; set; }
         public int DieSides { get; set; }
@@ -25,7 +25,7 @@ namespace DBFilesClient.NET.UnitTests.WDC1.Structures
         public int TriggerSpell { get; set; }
         public float PosFacing { get; set; }
         public int Attributes { get; set; }
-        public int BonusCoefficientFromAP { get; set; }
+        public float BonusCoefficientFromAP { get; set; }
         public float EffectExtraFloat { get; set; }
         public int ScalingCoefficient { get; set; }
         public int ScalingVariance { get; set; }

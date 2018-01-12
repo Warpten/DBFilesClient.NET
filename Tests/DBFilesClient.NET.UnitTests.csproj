@@ -96,7 +96,7 @@
     <Compile Include="WDBC\WDBC.cs" />
     <Compile Include="WDC1\Structures\MapEntry.cs" />
     <Compile Include="WDC1\Structures\SpellEffectEntry.cs" />
-    <Compile Include="WDC1\WDC1cs.cs" />
+    <Compile Include="WDC1\WDC1.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DBFilesClient2.NET\DBFilesClient2.NET.csproj">

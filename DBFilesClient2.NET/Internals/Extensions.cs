@@ -65,5 +65,14 @@ namespace DBFilesClient2.NET.Internals
                 return @event.EventHandlerType;
             return null;
         }
+
+        public static unsafe TDest ReinterpretCast<TDest>(this object source)
+        {
+            var tr = __makeref(source);
+            TDest w = default;
+            var trw = __makeref(w);
+            *((IntPtr*)&trw) = *((IntPtr*)&tr);
+            return __refvalue(trw, TDest);
+        }
     }
 }

@@ -50,39 +50,22 @@ namespace DBFilesClient2.NET
                 if (ReadBit())
                     value |= (long)(1 << i);
 
-            Console.WriteLine($"Read {bitCount} bits: {value}");          
-
             return value;
         }
 
         public override int ReadInt32()
         {
             var value = base.ReadInt32();
-            // Console.WriteLine($"Read int32: {value}");
             return value;
         }
 
-        public override long BitPosition
+        public override int BitPosition
         {
-            get {
-                var pos = _canRead ? ((BaseStream.Position - 1) * 8 + _counter) : (BaseStream.Position * 8 + _counter);
-                //Console.WriteLine();
-                //Console.WriteLine($"Acquiring bit position: {pos} ({BaseStream.Position - (_canRead ? 1 : 0)}, {_counter} bits in)");
-                return pos;
-            }
-            set {
-                var byteCount = value / 8;
-                var bitCount = (int)(value % 8);
-                
-                if (BaseStream.Position != byteCount)
-                {
-                    BaseStream.Position = byteCount;
-                    _canRead = false;
-                }
-
-                _counter = bitCount;
-
-                //Console.WriteLine($"Bit position set to: {value} ({BaseStream.Position}, {_counter} bits in)");
+            get => _counter;
+            set
+            {
+                _canRead = false;
+                _counter = value;
             }
         }
 
@@ -92,11 +75,7 @@ namespace DBFilesClient2.NET
             set
             {
                 BaseStream.Position = value;
-
-                _canRead = false;
-                _counter = 0;
-
-                // Console.WriteLine($"Byte position set to: {value}");
+                ResetBitReader();
             }
         }
 

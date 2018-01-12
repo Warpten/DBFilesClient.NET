@@ -73,9 +73,9 @@ namespace DBFilesClient2.NET.Implementations
 
                 //! TODO: Is this still padded in WDC1?
                 // Read over the structure, padding if necessary (padding was introduced somewhere in 7.3)
-                reader.BaseStream.Position += fieldSize;
-                if (fieldSize != 4 && reader.PeekChar() == '\0')
-                    reader.BaseStream.Position += 4 - fieldSize;
+                reader.BaseStream.Position += 4;
+                // if (fieldSize != 4 && reader.PeekChar() == '\0')
+                //     reader.BaseStream.Position += 4 - fieldSize;
             }
         }
 
