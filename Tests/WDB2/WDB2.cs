@@ -20,15 +20,15 @@ namespace DBFilesClient.NET.UnitTests.WDB2
         public void WDB2s() => TestHelper.TestNamespaceMembers<WDB2>("WDB2");
 
         [TestMethod]
-        public void Map() => TestHelper.TestStructure<int, MapEntry>("WDB2", 100, true);
+        public void Map() => TestHelper.TestStructure<int, MapEntry>("WDB2", 1, true);
 
         [TestMethod]
-        public void ItemSparse() => TestHelper.TestStructure<int, ItemSparseEntry>("WDB2", 100, true);
+        public void ItemSparse() => TestHelper.TestStructure<int, ItemSparseEntry>("WDB2", 1, true);
 
         [TestMethod]
-        public void ItemExtendedCost() => TestHelper.TestStructure<int, ItemExtendedCostEntry>("WDB2", 100, true);
+        public void ItemExtendedCost() => TestHelper.TestStructure<int, ItemExtendedCostEntry>("WDB2", 1, true);
         
         [TestMethod]
-        public void CreatureDisplayInfo() => TestHelper.TestStructure<int, CreatureDisplayInfoEntry>("WDB2", 100, true);
+        public void CreatureDisplayInfo() => TestHelper.TestStructure<int, CreatureDisplayInfoEntry>("WDB2", 1, true);
     }
 }

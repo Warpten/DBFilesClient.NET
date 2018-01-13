@@ -1,6 +1,7 @@
 ﻿using DBFilesClient2.NET.Exceptions;
 using DBFilesClient2.NET.Internals;
 using System;
+using System.IO;
 using System.Linq;
 
 namespace DBFilesClient2.NET.Implementations.WDBC
@@ -9,21 +10,21 @@ namespace DBFilesClient2.NET.Implementations.WDBC
         where TValue : class, new()
         where TKey : struct
     {
-        public WDBCReader(StorageOptions options) : base(options)
+        public WDBCReader(Stream baseStream, StorageOptions options) : base(baseStream, options)
         {
         }
 
-        public override bool ParseHeader(BinaryReader reader)
+        public override bool ParseHeader()
         {
-            Header.RecordCount = reader.ReadInt32();
+            Header.RecordCount = ReadInt32();
             if (Header.RecordCount == 0)
                 return false;
 
-            _header.FieldCount      = reader.ReadInt32();
-            _header.RecordSize      = reader.ReadInt32();
+            Header.FieldCount      = ReadInt32();
+            Header.RecordSize      = ReadInt32();
 
-            _header.StringTable.Exists = true;
-            _header.StringTable.Size   = reader.ReadInt32();
+            Header.StringTable.Exists = true;
+            Header.StringTable.Size   = ReadInt32();
 
             TypeMembers = new FieldMetadata[Members.Length];
             for (var i = 0; i < Members.Length; ++i)
@@ -38,46 +39,42 @@ namespace DBFilesClient2.NET.Implementations.WDBC
                     TypeMembers[i].OffsetInRecord = 0;
             }
 
-            if (TypeMembers.Sum(t => t.GetArraySize()) != _header.FieldCount)
-                throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, _header.RecordSize, Serializer.Size);
+            if (TypeMembers.Sum(t => t.GetArraySize()) != Header.FieldCount)
+                throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, Header.RecordSize, Serializer.RecordSize);
 
-            // Check size matches
-            if (_header.RecordSize != Serializer.Size)
-                throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, _header.RecordSize, Serializer.Size);
+            Header.RecordTable.Exists = true;
+            Header.RecordTable.StartOffset = BaseStream.Position;
+            Header.RecordTable.Size        = Header.RecordSize * Header.RecordCount;
 
-            _header.RecordTable.Exists = true;
-            _header.RecordTable.StartOffset = reader.BaseStream.Position;
-            _header.RecordTable.Size        = Header.RecordSize * Header.RecordCount;
-
-            _header.StringTable.Exists = true;
-            _header.StringTable.StartOffset = Header.RecordTable.EndOffset;
+            Header.StringTable.Exists = true;
+            Header.StringTable.StartOffset = Header.RecordTable.EndOffset;
             return true;
         }
 
-        protected override void LoadRecords(BinaryReader reader)
+        protected override void LoadRecords()
         {
             if (!Options.LoadRecords)
                 return;
 
-            reader.BaseStream.Position = Header.RecordTable.StartOffset;
+            BaseStream.Position = Header.RecordTable.StartOffset;
 
             for (var i = 0; i < Header.RecordCount; ++i)
             {
-                var recordOffset = reader.BaseStream.Position;
+                var recordOffset = BaseStream.Position;
 
-                var newRecord = Serializer.Deserializer(reader);
-                var newKey = Serializer.GetKey(newRecord);
+                var newRecord = Serializer.Deserialize(this);
+                var newKey = Serializer.KeyGetter(newRecord);
 
                 // Store the offset to the record and skip to the next, thus making sure
                 // to take record padding into consideration.
                 OffsetMap[newKey] = recordOffset;
 
 #if DEBUG
-                if (reader.BaseStream.Position > recordOffset + Header.RecordSize)
+                if (BaseStream.Position > recordOffset + Header.RecordSize)
                     throw new InvalidOperationException();
 #endif
 
-                reader.BaseStream.Position = recordOffset + Header.RecordSize;
+                BaseStream.Position = recordOffset + Header.RecordSize;
 
                 OnRecordLoaded(newKey, newRecord);
             }

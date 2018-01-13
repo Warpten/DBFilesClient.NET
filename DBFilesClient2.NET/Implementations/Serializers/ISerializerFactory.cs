@@ -11,14 +11,33 @@ namespace DBFilesClient2.NET.Implementations.Serializers
         where TKey : struct
         where TValue : class, new()
     {
-        int Size { get; }
+        /// <summary>
+        /// This property should be lazy-init'ed: it does not get called if the file does not have a copy table, or
+        /// if it has an index table.
+        /// </summary>
+        Func<TValue, TKey> KeyGetter { get; }
 
-        IStorageReader<TKey, TValue> Storage { get; set; }
+        /// <summary>
+        /// This property should be lazy-init'ed: it does not get called if the file does not have an index table
+        /// and if it doesn't have a copy table either.
+        /// </summary>
+        Action<TValue, TKey> KeySetter { get; }
 
-        Func<BinaryReader, TValue> Deserializer { get; }
-        Func<TValue, TKey> GetKey { get; }
-        Action<TValue, TKey> SetKey { get; }
+        /// <summary>
+        /// The size, in bytes, of the record. This assumes that strings are not inlined.
+        /// </summary>
+        int RecordSize { get; }
 
+        void SetStorage(IStorageReader<TKey, TValue> storage);
+
+        TValue Deserialize(IStorageReader<TKey, TValue> reader);
+    }
+
+    internal interface ISerializer<TKey, TValue, THeader> : ISerializer<TKey, TValue>
+        where TKey : struct
+        where TValue : class, new()
+        where THeader : IStorageHeader, new()
+    {
         Action<TKey, TValue, ICommonTable<TKey, TValue>, BinaryReader> CommonTableDeserializer { get; }
     }
 
@@ -40,22 +59,6 @@ namespace DBFilesClient2.NET.Implementations.Serializers
                     return new WDBSerializer<TKey, TValue, WDB6Header>();
                 case 0x31434457: // WDC1
                     return new WDCSerializer<TKey, TValue, WDC1Header>();
-                default:
-                    throw new InvalidOperationException("Unknown signature");
-            }
-        }
-
-        public static BinaryReader CreateReader(int signature, Stream stream, StorageOptions options)
-        {
-            switch (signature)
-            {
-                case 0x43424457: // WDBC
-                case 0x32424457: // WDB2
-                case 0x35424457: // WDB5
-                case 0x36424457: // WDB6
-                    return new BinaryReader(stream, options);
-                case 0x31434457: // WDC1
-                    return new BitReader(stream, options);
                 default:
                     throw new InvalidOperationException("Unknown signature");
             }

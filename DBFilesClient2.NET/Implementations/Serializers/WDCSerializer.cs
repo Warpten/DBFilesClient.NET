@@ -14,47 +14,47 @@ namespace DBFilesClient2.NET.Implementations.Serializers
         where TValue : class, new()
         where THeader : IStorageHeader, new()
     {
-        private Func<BinaryReader, TValue> _deserializer;
+        private Func<IStorageReader<TKey, TValue>, TValue> _deserializer;
         private Action<TKey, TValue, ICommonTable<TKey, TValue>, BinaryReader> _commonTableDeserializer;
 
-        public override Func<BinaryReader, TValue> Deserializer
+        public override TValue Deserialize(IStorageReader<TKey, TValue> reader)
         {
-            get
-            {
-                if (_deserializer != null)
-                    return _deserializer;
-
-                if (!(Storage is WDC1Reader<TKey, TValue> wdcReader))
-                    throw new InvalidOperationException();
-
-                return _deserializer = GenerateWDC1(wdcReader);
-            }
+            if (_deserializer != null)
+                return _deserializer(reader);
+        
+            if (!(reader is WDC1Reader<TKey, TValue> wdcReader))
+                throw new InvalidOperationException();
+        
+            return (_deserializer = GenerateWDC1(wdcReader))(reader);
         }
 
-        private Func<BinaryReader, TValue> GenerateWDC1(WDC1Reader<TKey, TValue> reader)
+        private Func<IStorageReader<TKey, TValue>, TValue> GenerateWDC1(WDC1Reader<TKey, TValue> reader)
         {
             var expressionList = new List<Expression>();
 
-            var readerExpr = Expression.Parameter(typeof(BinaryReader), "reader");
+            var readerExpr = Expression.Parameter(typeof(IStorageReader<TKey, TValue>), "storage");
             var valueExpr = Expression.Variable(typeof(TValue), "value");
 
-            var scrubberExpr = Expression.Variable(typeof(long), "position");
+            var positionScrubberExpr = Expression.Variable(typeof(long), "position");
 
             // Prepare a lot of helper expressions
             var positionExpr = Expression.MakeMemberAccess(readerExpr, MemberProvider.BinaryReaderPosition);
             var bitposExpr = Expression.MakeMemberAccess(readerExpr, MemberProvider.BinaryReaderBitPosition);
 
             expressionList.Add(Expression.Assign(valueExpr, Expression.New(typeof(TValue))));
-            for (var i = 0; i < reader.TypeMembers.Length; ++i)
+            for (var i = 0; i < TypeMembers.Length; ++i)
             {
-                var memberMeta = reader.TypeMembers[i];
+                var memberMeta = TypeMembers[i];
 
-                if (reader.Header.IndexTable.Exists && memberMeta.MemberInfo.GetCustomAttribute<IndexAttribute>() != null)
+                if (Header.IndexTable.Exists && memberMeta.MemberInfo.GetCustomAttribute<IndexAttribute>() != null)
                     continue;
 
                 var memberAccessExpr = Expression.MakeMemberAccess(valueExpr, memberMeta.MemberInfo);
 
                 var readExpr = GetBaseReader(memberMeta, readerExpr);
+
+                if ((memberMeta.BitOffsetInRecord % 8) != 0 && memberMeta.Compression != MemberCompression.CommonData)
+                    expressionList.Add(Expression.Assign(bitposExpr, Expression.Constant((int)(memberMeta.BitOffsetInRecord % 8))));
 
                 switch (memberMeta.Compression)
                 {
@@ -62,9 +62,7 @@ namespace DBFilesClient2.NET.Implementations.Serializers
                         {
                             if (!memberMeta.Type.IsArray)
                             {
-                                expressionList.Add(Expression.Assign(
-                                    memberAccessExpr,
-                                    readExpr));
+                                expressionList.Add(Expression.Assign(memberAccessExpr, readExpr));
                             }
                             else
                             {
@@ -92,37 +90,67 @@ namespace DBFilesClient2.NET.Implementations.Serializers
                             break;
                         }
                     case MemberCompression.Bitpacked:
-                        expressionList.Add(Expression.Assign(memberAccessExpr, Expression.Convert(readExpr, memberMeta.BaseType)));
+                        expressionList.Add(Expression.Assign(memberAccessExpr, readExpr));
                         break;
                     case MemberCompression.BitpackedIndexed:
                         {
-                            // var bitAmount = memberMeta.BitSize % 8;
-                            // var byteAmount = memberMeta.ByteSize / 8;
-                            // 
-                            // expressionList.Add(Expression.Assign(
-                            //     scrubberExpr,
-                            //     Expression.Add(
-                            //         bitposExpr,
-                            //         Expression.Constant((long)memberMeta.BitSize))));
-                            // 
-                            // //! TODO: Make the additions a single constant - this is for debugging
-                            // var seekExpr = Expression.Add(
-                            //     Expression.Add(
-                            //         Expression.Constant(reader.Header.PalletTable.StartOffset),
-                            //         Expression.Constant(memberMeta.AdditionalDataOffset)),
-                            //     Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
-                            // expressionList.Add(Expression.Assign(positionExpr, seekExpr));
-                            // expressionList.Add(Expression.Assign(
-                            //     memberAccessExpr,
-                            //     GetBaseReader(memberMeta.MemberInfo, readerExpr)));
-                            // 
-                            // // expressionList.Add(Expression.Assign(positionExpr, Expression.Constant()))
-                            // expressionList.Add(Expression.Assign(
-                            //     bitposExpr,
-                            //     scrubberExpr));
+                            var bitAmount = memberMeta.BitSize % 8;
+                            var byteAmount = memberMeta.BitSize / 8;
+
+                            if (byteAmount > 0)
+                            {
+                                expressionList.Add(Expression.Assign(
+                                    positionScrubberExpr,
+                                    Expression.Add(positionExpr, Expression.Constant((long)byteAmount))));
+                            }
+
+                            var startOffset = Header.PalletTable.StartOffset + memberMeta.AdditionalDataOffset;
+                            //! TODO: Call ReadBits(...) here.
+                            var seekExpr = Expression.Add(
+                                Expression.Constant(startOffset),
+                                Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
+
+                            expressionList.Add(Expression.Assign(positionExpr, seekExpr));
+                            expressionList.Add(Expression.Assign(
+                                memberAccessExpr,
+                                GetBaseReader(memberMeta.MemberInfo, readerExpr)));
+
+                            expressionList.Add(Expression.Assign(positionExpr, positionScrubberExpr));
                             break;
                         }
                     case MemberCompression.BitpackedIndexedArray:
+                        {
+                            var bitAmount = memberMeta.BitSize % 8;
+                            var byteAmount = memberMeta.BitSize / 8;
+
+                            if (byteAmount > 0)
+                            {
+                                expressionList.Add(Expression.Assign(
+                                    positionScrubberExpr,
+                                    Expression.Add(positionExpr, Expression.Constant((long)byteAmount))));
+                            }
+
+                            var startOffset = Header.PalletTable.StartOffset + memberMeta.AdditionalDataOffset;
+                            //! TODO: Call ReadBits(...) here.
+                            var seekExpr = Expression.Add(
+                                Expression.Constant(startOffset),
+                                Expression.Multiply(Expression.Constant(4L), Expression.Convert(readExpr, typeof(long))));
+
+                            expressionList.Add(Expression.Assign(positionExpr, seekExpr));
+                            expressionList.Add(Expression.Assign(
+                                memberAccessExpr,
+                                Expression.New(memberMeta.Type.GetConstructor(new[] { typeof(int) }),
+                                    Expression.Constant(memberMeta.GetArraySize()))));
+
+                            for (var itr = 0; itr < memberMeta.GetArraySize(); ++itr)
+                            {
+                                var elementAccessExpr = Expression.ArrayAccess(memberAccessExpr, Expression.Constant(itr));
+                                expressionList.Add(Expression.Assign(elementAccessExpr, GetBaseReader(memberMeta.MemberInfo, readerExpr)));
+                            }
+
+                            expressionList.Add(Expression.Assign(positionExpr, positionScrubberExpr));
+                            break;
+                        }
                         {
                             // expressionList.Add(Expression.Assign(
                             //     scrubberExpr,
@@ -193,24 +221,24 @@ namespace DBFilesClient2.NET.Implementations.Serializers
 
             expressionList.Add(valueExpr);
 
-            var expressionBlock = Expression.Block(new[] { valueExpr, scrubberExpr }, expressionList);
-            var lambda = Expression.Lambda<Func<BinaryReader, TValue>>(expressionBlock, readerExpr);
+            var expressionBlock = Expression.Block(new[] { valueExpr, positionScrubberExpr }, expressionList);
+            var lambda = Expression.Lambda<Func<IStorageReader<TKey, TValue>, TValue>>(expressionBlock, readerExpr);
             return lambda.Compile();
         }
 
-        public override Action<TKey, TValue, ICommonTable<TKey, TValue>, BinaryReader> CommonTableDeserializer
-        {
-            get
-            {
-                if (_commonTableDeserializer != null)
-                    return _commonTableDeserializer;
-
-                if (Storage is WDC1Reader<TKey, TValue> wdcReader)
-                    return _commonTableDeserializer = GenerateCommonBlockReader(Storage as WDC1Reader<TKey, TValue>);
-
-                throw new InvalidOperationException();
-            }
-        }
+        //  public override Action<TKey, TValue, ICommonTable<TKey, TValue>, BinaryReader> CommonTableDeserializer
+        //  {
+        //      get
+        //      {
+        //          if (_commonTableDeserializer != null)
+        //              return _commonTableDeserializer;
+        // 
+        //          if (Storage is WDC1Reader<TKey, TValue> wdcReader)
+        //              return _commonTableDeserializer = GenerateCommonBlockReader(Storage as WDC1Reader<TKey, TValue>);
+        // 
+        //          throw new InvalidOperationException();
+        //      }
+        //  }
         
         private Action<TKey, TValue, ICommonTable<TKey, TValue>, BinaryReader> GenerateCommonBlockReader(WDC1Reader<TKey, TValue> reader)
         {
@@ -262,19 +290,19 @@ namespace DBFilesClient2.NET.Implementations.Serializers
             return _commonTableDeserializer;
         }
 
-        protected override Expression GetBaseReader(FieldMetadata fieldInfo, Expression callTarget)
-        {
-            if ((fieldInfo.BitSize % 8) != 0)
-            {
-                var bitReadCall = Expression.Call(callTarget, typeof(BinaryReader).GetMethod("ReadBits", new[] { typeof(int) }), Expression.Constant(fieldInfo.BitSize));
-
-                if (fieldInfo.BaseType == typeof(string))
-                    throw new NotImplementedException();
-
-                return bitReadCall;
-            }
-
-            return base.GetBaseReader(fieldInfo, callTarget);
-        }
+        // protected override Expression GetBaseReader(FieldMetadata fieldInfo, Expression callTarget)
+        // {
+        //     if ((fieldInfo.BitSize % 8) != 0)
+        //     {
+        //         var bitReadCall = Expression.Call(callTarget, typeof(IBinaryReader).GetMethod("ReadBits", new[] { typeof(int) }), Expression.Constant(fieldInfo.BitSize));
+        // 
+        //         if (fieldInfo.BaseType == typeof(string))
+        //             throw new NotImplementedException();
+        // 
+        //         return bitReadCall;
+        //     }
+        // 
+        //     return base.GetBaseReader(fieldInfo, callTarget);
+        // }
     }
 }

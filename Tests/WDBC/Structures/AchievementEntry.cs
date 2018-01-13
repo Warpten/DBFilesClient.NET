@@ -20,7 +20,7 @@ namespace DBFilesClient.NET.UnitTests.WDBC.Structures
         public uint Points { get; set; }
         public uint UIOrder { get; set; }
         public uint Flags { get; set; }
-        public uint  IconID { get; set; }
+        public uint IconID { get; set; }
         [StoragePresence(StoragePresence.Include, 16)]
         public string[] Rewards { get; set; }
         public uint RewardFlags { get; set; }

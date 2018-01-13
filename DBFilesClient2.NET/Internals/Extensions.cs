@@ -66,7 +66,7 @@ namespace DBFilesClient2.NET.Internals
             return null;
         }
 
-        public static unsafe TDest ReinterpretCast<TDest>(this object source)
+        public static unsafe TDest ReinterpretCast<TSource, TDest>(this TSource source)
         {
             var tr = __makeref(source);
             TDest w = default;

@@ -4,7 +4,7 @@ using System;
 
 namespace DBFilesClient2.NET.Implementations
 {
-    internal interface IStorageReader<TKey, TValue>
+    internal interface IStorageReader<TKey, TValue> : IBinaryReader
         where TKey : struct
         where TValue : class, new()
     {
@@ -13,17 +13,28 @@ namespace DBFilesClient2.NET.Implementations
 
         StorageOptions Options { get; }
 
-        void LoadFile(BinaryReader reader);
-        bool ParseHeader(BinaryReader reader);
+        #region File loading
+        void LoadFile();
+        bool ParseHeader();
+        void CheckRecordSize();
+        #endregion
 
-        ISerializer<TKey, TValue> Serializer { get; set; }
-
+        #region Events
         event Action<TKey, TValue> RecordLoaded;
         event Action<long, string> StringLoaded;
+        #endregion
 
         FieldMetadata[] TypeMembers { get; }
 
-        IStorageHeader Header { get; }
+        ISerializer<TKey, TValue> Serializer { get; set; }
+    }
+
+    internal interface IStorageReader<TKey, TValue, THeader> : IStorageReader<TKey, TValue>
+        where TKey : struct
+        where TValue : class, new()
+        where THeader : IStorageHeader, new()
+    {
+        THeader Header { get; }
 
         ICommonTable<TKey, TValue> CommonTable { get; }
     }

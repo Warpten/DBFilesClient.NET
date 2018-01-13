@@ -1,6 +1,7 @@
 ﻿using DBFilesClient2.NET.Exceptions;
 using DBFilesClient2.NET.Internals;
 using System;
+using System.IO;
 using System.Linq;
 
 namespace DBFilesClient2.NET.Implementations.WDB2
@@ -9,25 +10,25 @@ namespace DBFilesClient2.NET.Implementations.WDB2
         where TValue : class, new()
         where TKey : struct
     {
-        public WDB2Reader(StorageOptions options) : base(options)
+        internal WDB2Reader(Stream baseStream, StorageOptions options) : base(baseStream, options)
         {
         }
 
-        public override bool ParseHeader(BinaryReader reader)
+        public override bool ParseHeader()
         {
-            _header.RecordCount = reader.ReadInt32();
-            if (_header.RecordCount == 0)
+            Header.RecordCount = ReadInt32();
+            if (Header.RecordCount == 0)
                 return false;
 
-            _header.FieldCount = reader.ReadInt32();
-            _header.RecordSize = reader.ReadInt32();
+            Header.FieldCount = ReadInt32();
+            Header.RecordSize = ReadInt32();
 
-            var stringTableSize = reader.ReadInt32();
+            var stringTableSize = ReadInt32();
 
-            reader.BaseStream.Position += 4 + 4 + 4; // table hash, Build and timestamp
-            _header.MinIndex = reader.ReadInt32();
-            _header.MaxIndex = reader.ReadInt32();
-            reader.BaseStream.Position += 4 + 4; // Locales, copy table size
+            BaseStream.Position += 4 + 4 + 4; // table hash, Build and timestamp
+            Header.MinIndex = ReadInt32();
+            Header.MaxIndex = ReadInt32();
+            BaseStream.Position += 4 + 4; // Locales, copy table size
 
             TypeMembers = new FieldMetadata[Members.Length];
             for (var i = 0; i < Members.Length; ++i)
@@ -42,51 +43,47 @@ namespace DBFilesClient2.NET.Implementations.WDB2
                     TypeMembers[i].OffsetInRecord = 0;
             }
 
-            if (TypeMembers.Sum(t => t.GetArraySize()) != _header.FieldCount)
-                throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, Header.RecordSize, Serializer.Size);
+            if (TypeMembers.Sum(t => t.GetArraySize()) != Header.FieldCount)
+                throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, Header.RecordSize, Serializer.RecordSize);
 
-            // Check size matches
-            if (_header.RecordSize != Serializer.Size)
-               throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, _header.RecordSize, Serializer.Size);
+            Header.OffsetMap.Exists = Header.MaxIndex != 0;
+            Header.OffsetMap.StartOffset = BaseStream.Position;
+            Header.OffsetMap.Size = (Header.MaxIndex - Header.MinIndex + 1) * (4 + 2);
 
-            _header.OffsetMap.Exists = _header.MaxIndex != 0;
-            _header.OffsetMap.StartOffset = reader.BaseStream.Position;
-            _header.OffsetMap.Size = (_header.MaxIndex - _header.MinIndex + 1) * (4 + 2);
+            Header.RecordTable.Exists = true; 
+            Header.RecordTable.StartOffset = Header.OffsetMap.EndOffset;
+            Header.RecordTable.Size = Header.RecordCount * Header.RecordSize;
 
-            _header.RecordTable.Exists = true; 
-            _header.RecordTable.StartOffset = _header.OffsetMap.EndOffset;
-            _header.RecordTable.Size = _header.RecordCount * _header.RecordSize;
-
-            _header.StringTable.Exists = true;
-            _header.StringTable.Size = stringTableSize;
-            _header.StringTable.StartOffset = _header.RecordTable.EndOffset;
+            Header.StringTable.Exists = true;
+            Header.StringTable.Size = stringTableSize;
+            Header.StringTable.StartOffset = Header.RecordTable.EndOffset;
             return true;
         }
 
-        protected override void LoadRecords(BinaryReader reader)
+        protected override void LoadRecords()
         {
             if (!Options.LoadRecords)
                 return;
 
-            reader.BaseStream.Position = _header.RecordTable.StartOffset;
+            BaseStream.Position = Header.RecordTable.StartOffset;
 
-            for (var i = 0; i < _header.RecordCount; ++i)
+            for (var i = 0; i < Header.RecordCount; ++i)
             {
-                var recordOffset = reader.BaseStream.Position;
+                var recordOffset = BaseStream.Position;
 
-                var newRecord = Serializer.Deserializer(reader);
-                var newKey = Serializer.GetKey(newRecord);
+                var newRecord = Serializer.Deserialize(this);
+                var newKey = Serializer.KeyGetter(newRecord);
 
                 // Store the offset to the record and skip to the next, thus making sure
                 // to take record padding into consideration.
                 OffsetMap[newKey] = recordOffset;
 
 #if DEBUG
-                if (reader.BaseStream.Position > recordOffset + _header.RecordSize)
+                if (BaseStream.Position > recordOffset + Header.RecordSize)
                     throw new InvalidOperationException();
 #endif
 
-                reader.BaseStream.Position = recordOffset + _header.RecordSize;
+                BaseStream.Position = recordOffset + Header.RecordSize;
 
                 OnRecordLoaded(newKey, newRecord);
             }

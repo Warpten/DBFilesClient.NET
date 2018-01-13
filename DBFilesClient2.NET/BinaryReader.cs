@@ -7,7 +7,37 @@ using System.Text;
 
 namespace DBFilesClient2.NET
 {
-    public class BinaryReader : System.IO.BinaryReader
+    internal interface IBinaryReader
+    {
+        string ReadString(Encoding encoding);
+        string ReadString();
+
+        uint ReadUInt24();
+        int ReadInt24();
+
+        sbyte ReadSByte(int bitCount = 8);
+        byte ReadByte(int bitCount = 8);
+
+        short ReadInt16(int bitCount = 16);
+        ushort ReadUInt16(int bitCount = 16);
+
+        int ReadInt32(int bitCount = 32);
+        uint ReadUInt32(int bitCount = 32);
+
+        long ReadInt64(int bitCount = 64);
+        ulong ReadUInt64(int bitCount = 64);
+
+        float ReadSingle(int bitCount = 32);
+
+        bool ReadBit();
+
+        int BitPosition { get; set; }
+        long Position { get; set; }
+
+        void ResetBitReader();
+    }
+
+    public abstract class BinaryReader : System.IO.BinaryReader, IBinaryReader
     {
         private int _byte;
         private bool _canRead = false;
@@ -15,21 +45,13 @@ namespace DBFilesClient2.NET
 
         private StorageOptions _options;
 
-        /// <remarks>Remove this and find a clean way around it. - Maybe just make <see cref="BaseStorageReader{TKey, TValue, THeader}"/> inherit this? </remarks>
-        public long StringTableOffset {
-            get;
-            set;
-        } = 0;
-        public bool UseInlineStrings { get; set; } = false;
-
-
         public BinaryReader(Stream baseStream, StorageOptions options) : base(baseStream)
         {
             _options = options;
         }
 
         #region ReadString
-        private string ReadStringDirect(Encoding encoding)
+        protected string ReadStringDirect(Encoding encoding)
         {
             var byteList = new List<byte>();
             byte b;
@@ -42,20 +64,7 @@ namespace DBFilesClient2.NET
             return result;
         }
 
-        public virtual string ReadString(Encoding encoding)
-        {
-            if (UseInlineStrings)
-                return ReadStringDirect(encoding);
-
-            // Not used if strings are inlined, so doesn't matter.
-            var oldPosition = BaseStream.Position + 4;
-
-            BaseStream.Position = ReadInt32() + StringTableOffset;
-            var result = ReadStringDirect(encoding);
-            BaseStream.Position = oldPosition;
-            
-            return result;
-        }
+        public abstract string ReadString(Encoding encoding);
 
         public new string ReadString() => ReadString(Encoding.UTF8);
         #endregion
@@ -174,7 +183,9 @@ namespace DBFilesClient2.NET
 
         public unsafe float ReadSingle(int bitCount = 32)
         {
-            return ReadInt32(bitCount).ReinterpretCast<float>();
+            var intValue = ReadUInt32(bitCount);
+            var floatValue = intValue.ReinterpretCast<uint, float>();
+            return floatValue;
         }
 
         #region Untyped bit reading
@@ -187,11 +198,9 @@ namespace DBFilesClient2.NET
                 _canRead = _byte != -1;
             }
 
-            // we are at EOF
             if (!_canRead)
                 throw new IndexOutOfRangeException();
 
-            // get current bit and update our counter
             var value = ((_byte & 0xFF) >> (7 - _counter)) & 1;
 
             _counter++;

@@ -167,7 +167,7 @@ namespace DBFilesClient.NET.UnitTests
 
         public static void TestNamespaceMembers<T>(string directory)
         {
-            var methodInfo = typeof(TestHelper).GetMethod("TestStructure", BindingFlags.Static | BindingFlags.Public);
+            var methodInfo = typeof(TestHelper).GetMethod("TestStructure", new[] { typeof(string), typeof(int), typeof(bool) });
             Assert.IsNotNull(methodInfo);
 
             Console.WriteLine("File name                        Average time to load     Time per record     Maximum time       Minimum time       Standard deviation");

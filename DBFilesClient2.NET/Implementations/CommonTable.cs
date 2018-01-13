@@ -14,13 +14,14 @@ namespace DBFilesClient2.NET.Implementations
         long GetMemberOffset(int memberIndex, TKey recordKey);
     }
 
-    internal class WDCCommonTable<TKey, TValue> : ICommonTable<TKey, TValue>
+    internal class WDCCommonTable<TKey, TValue, THeader> : ICommonTable<TKey, TValue>
         where TKey : struct
         where TValue : class, new()
+        where THeader : IStorageHeader, new()
     {
         private Dictionary<int, FieldStore<TKey>> _store = new Dictionary<int, FieldStore<TKey>>();
 
-        public WDCCommonTable(IStorageReader<TKey, TValue> storage, BinaryReader reader)
+        public WDCCommonTable(IStorageReader<TKey, TValue, THeader> storage)
         {
             var memberIndex = 0;
             foreach (var memberMeta in storage.TypeMembers)
@@ -32,7 +33,7 @@ namespace DBFilesClient2.NET.Implementations
                 {
                     var store = new FieldStore<TKey>(storage.Header.CommonTable, memberMeta);
 
-                    store.LoadTable(reader, memberMeta.Type);
+                    store.LoadTable((BinaryReader)storage, memberMeta.Type);
                     _store.Add(memberIndex , store);
                 }
 

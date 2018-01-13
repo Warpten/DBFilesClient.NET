@@ -17,40 +17,40 @@ namespace DBFilesClient2.NET.Implementations.Serializers
         public static PropertyInfo BaseStream
         {
             get;
-        } = typeof(BinaryReader).GetProperty("BaseStream", BindingFlags.Public | BindingFlags.Instance);
+        } = typeof(IBinaryReader).GetProperty("BaseStream", BindingFlags.Public | BindingFlags.Instance);
 
         public static PropertyInfo BinaryReaderPosition
         {
             get;
-        } = typeof(BinaryReader).GetProperty("Position", BindingFlags.Public | BindingFlags.Instance);
+        } = typeof(IBinaryReader).GetProperty("Position", BindingFlags.Public | BindingFlags.Instance);
 
         public static PropertyInfo BinaryReaderBitPosition
         {
             get;
-        } = typeof(BinaryReader).GetProperty("BitPosition", BindingFlags.Public | BindingFlags.Instance);
+        } = typeof(IBinaryReader).GetProperty("BitPosition", BindingFlags.Public | BindingFlags.Instance);
 
         public static PropertyInfo StreamPosition
         {
             get;
         } = typeof(Stream).GetProperty("Position", BindingFlags.Public | BindingFlags.Instance);
 
-        public static MethodInfo ReadInt24 = typeof(BinaryReader).GetMethod("ReadInt24", Type.EmptyTypes);
-        public static MethodInfo ReadUInt24 = typeof(BinaryReader).GetMethod("ReadUInt24", Type.EmptyTypes);
+        public static MethodInfo ReadInt24 = typeof(IBinaryReader).GetMethod("ReadInt24", Type.EmptyTypes);
+        public static MethodInfo ReadUInt24 = typeof(IBinaryReader).GetMethod("ReadUInt24", Type.EmptyTypes);
         public static Dictionary<TypeCode, MethodInfo> BinaryReaders { get; } = new Dictionary<TypeCode, MethodInfo> {
-            { TypeCode.Int64, typeof (BinaryReader).GetMethod("ReadInt64", Type.EmptyTypes) },
-            { TypeCode.Int32, typeof (BinaryReader).GetMethod("ReadInt32", Type.EmptyTypes) },
-            { TypeCode.Int16, typeof (BinaryReader).GetMethod("ReadInt16", Type.EmptyTypes) },
-            { TypeCode.SByte, typeof (BinaryReader).GetMethod("ReadSByte", Type.EmptyTypes) },
+            { TypeCode.Int64, typeof (IBinaryReader).GetMethod("ReadInt64", new[] { typeof(int) }) },
+            { TypeCode.Int32, typeof (IBinaryReader).GetMethod("ReadInt32", new[] { typeof(int) }) },
+            { TypeCode.Int16, typeof (IBinaryReader).GetMethod("ReadInt16", new[] { typeof(int) }) },
+            { TypeCode.SByte, typeof (IBinaryReader).GetMethod("ReadSByte", new[] { typeof(int) }) },
 
-            { TypeCode.UInt64, typeof (BinaryReader).GetMethod("ReadUInt64", Type.EmptyTypes) },
-            { TypeCode.UInt32, typeof (BinaryReader).GetMethod("ReadUInt32", Type.EmptyTypes) },
-            { TypeCode.UInt16, typeof (BinaryReader).GetMethod("ReadUInt16", Type.EmptyTypes) },
-            { TypeCode.Byte, typeof (BinaryReader).GetMethod("ReadByte", Type.EmptyTypes) },
+            { TypeCode.UInt64, typeof (IBinaryReader).GetMethod("ReadUInt64", new[] { typeof(int) }) },
+            { TypeCode.UInt32, typeof (IBinaryReader).GetMethod("ReadUInt32", new[] { typeof(int) }) },
+            { TypeCode.UInt16, typeof (IBinaryReader).GetMethod("ReadUInt16", new[] { typeof(int) }) },
+            { TypeCode.Byte, typeof (IBinaryReader).GetMethod("ReadByte", new[] { typeof(int) }) },
 
-            { TypeCode.Char, typeof (BinaryReader).GetMethod("ReadChar", Type.EmptyTypes) },
-            { TypeCode.Single, typeof (BinaryReader).GetMethod("ReadSingle", Type.EmptyTypes) },
+            // { TypeCode.Char, typeof (IBinaryReader).GetMethod("ReadChar", new[] { typeof(int) }) },
+            { TypeCode.Single, typeof (IBinaryReader).GetMethod("ReadSingle", new[] { typeof(int) }) },
 
-            { TypeCode.String, typeof (BinaryReader).GetMethod("ReadString", Type.EmptyTypes) },
+            { TypeCode.String, typeof (IBinaryReader).GetMethod("ReadString", Type.EmptyTypes) },
         };
     }
 }

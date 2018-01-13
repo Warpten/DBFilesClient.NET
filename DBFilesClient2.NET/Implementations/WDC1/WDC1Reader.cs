@@ -5,6 +5,7 @@ using DBFilesClient2.NET.Internals;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -16,44 +17,44 @@ namespace DBFilesClient2.NET.Implementations.WDC1
     {
         private int _totalFieldCount;
 
-        public WDC1Reader(StorageOptions options) : base(options)
+        internal WDC1Reader(Stream baseStream, StorageOptions options) : base(baseStream, options)
         {
         }
 
-        public override bool ParseHeader(BinaryReader reader)
+        public override bool ParseHeader()
         {
-            _header.RecordCount  = reader.ReadInt32();
-            _header.FieldCount   = reader.ReadInt32();
-            _header.RecordSize   = reader.ReadInt32();
-            var stringTableSize = reader.ReadInt32();
+            Header.RecordCount  = ReadInt32();
+            Header.FieldCount   = ReadInt32();
+            Header.RecordSize   = ReadInt32();
+            var stringTableSize  = ReadInt32();
 
-            reader.BaseStream.Position += 4 + 4;
+            BaseStream.Position += 4 + 4;
 
-            _header.MinIndex    = reader.ReadInt32();
-            _header.MaxIndex    = reader.ReadInt32();
-            var locale          = reader.ReadInt32();
-            var copyTableSize   = reader.ReadInt32();
-            var flags           = reader.ReadInt16();
-            _header.IndexColumn = reader.ReadInt16();
-            _totalFieldCount    = reader.ReadInt32();
+            Header.MinIndex    = ReadInt32();
+            Header.MaxIndex    = ReadInt32();
+            var locale          = ReadInt32();
+            var copyTableSize   = ReadInt32();
+            var flags           = ReadInt16();
+            Header.IndexColumn = ReadInt16();
+            _totalFieldCount    = ReadInt32();
 
-            var bitpackedDataOffset = reader.ReadInt32(); // irrelevant to parsing
+            var bitpackedDataOffset = ReadInt32(); // irrelevant to parsing
 
-            var lookupColumnCount    = reader.ReadInt32();
-            long offsetMapOffset     = reader.ReadInt32();
-            var indexTableSize       = reader.ReadInt32();
-            var fieldStorageInfoSize = reader.ReadInt32();
-            var commonDataSize       = reader.ReadInt32();
-            var palletDataSize       = reader.ReadInt32();
-            var relationshipDataSize = reader.ReadInt32();
+            var lookupColumnCount    = ReadInt32();
+            long offsetMapOffset     = ReadInt32();
+            var indexTableSize       = ReadInt32();
+            var fieldStorageInfoSize = ReadInt32();
+            var commonDataSize       = ReadInt32();
+            var palletDataSize       = ReadInt32();
+            var relationshipDataSize = ReadInt32();
 
             var fieldStructures = new FieldMetadata[_totalFieldCount];
 
             for (var i = 0; i < _totalFieldCount; ++i)
             {
                 var structure = new FieldMetadata();
-                structure.ByteSize = (32 - reader.ReadInt16()) / 8;
-                structure.OffsetInRecord = reader.ReadUInt16();
+                structure.ByteSize = (32 - ReadInt16()) / 8;
+                structure.OffsetInRecord = ReadUInt16();
                 fieldStructures[i] = structure;
             }
 
@@ -66,61 +67,61 @@ namespace DBFilesClient2.NET.Implementations.WDC1
 
                 fieldStructures[i].GuessedArraySize = (int)((fieldStructures[i + 1].OffsetInRecord - fieldStructures[i].OffsetInRecord) / fieldStructures[i].ByteSize);
             }
-            _header.RecordTable.Exists        = (flags & 0x01) == 0;
-            _header.StringTable.Exists        = (flags & 0x01) == 0;
-            _header.OffsetMap.Exists          = (flags & 0x01) != 0;
-            _header.VariableRecordData.Exists = (flags & 0x01) != 0;
+            Header.RecordTable.Exists        = (flags & 0x01) == 0;
+            Header.StringTable.Exists        = (flags & 0x01) == 0;
+            Header.OffsetMap.Exists          = (flags & 0x01) != 0;
+            Header.VariableRecordData.Exists = (flags & 0x01) != 0;
 
-            _header.RecordTable.StartOffset = reader.BaseStream.Position;
-            _header.RecordTable.Size        = _header.RecordSize * _header.RecordCount;
+            Header.RecordTable.StartOffset = BaseStream.Position;
+            Header.RecordTable.Size        = Header.RecordSize * Header.RecordCount;
 
-            _header.StringTable.StartOffset = _header.RecordTable.EndOffset;
-            _header.StringTable.Size        = stringTableSize;
+            Header.StringTable.StartOffset = Header.RecordTable.EndOffset;
+            Header.StringTable.Size        = stringTableSize;
 
-            _header.VariableRecordData.StartOffset = reader.BaseStream.Position;
-            _header.VariableRecordData.Size        = (int)(offsetMapOffset - reader.BaseStream.Position);
+            Header.VariableRecordData.StartOffset = BaseStream.Position;
+            Header.VariableRecordData.Size        = (int)(offsetMapOffset - BaseStream.Position);
 
-            _header.OffsetMap.StartOffset = _header.VariableRecordData.EndOffset;
-            _header.OffsetMap.Size        = (_header.MaxIndex - _header.MinIndex + 1) * (4 + 2);
+            Header.OffsetMap.StartOffset = Header.VariableRecordData.EndOffset;
+            Header.OffsetMap.Size        = (Header.MaxIndex - Header.MinIndex + 1) * (4 + 2);
 
-            _header.IndexTable.Exists      = true;
-            _header.IndexTable.StartOffset = _header.OffsetMap.Exists ? _header.OffsetMap.EndOffset : _header.StringTable.EndOffset;
-            _header.IndexTable.Size        = indexTableSize;
+            Header.IndexTable.Exists      = true;
+            Header.IndexTable.StartOffset = Header.OffsetMap.Exists ? Header.OffsetMap.EndOffset : Header.StringTable.EndOffset;
+            Header.IndexTable.Size        = indexTableSize;
 
-            _header.CopyTable.Exists      = true;
-            _header.CopyTable.StartOffset = _header.IndexTable.EndOffset;
-            _header.CopyTable.Size        = copyTableSize;
+            Header.CopyTable.Exists      = true;
+            Header.CopyTable.StartOffset = Header.IndexTable.EndOffset;
+            Header.CopyTable.Size        = copyTableSize;
             
-            _header.ExtendedMemberMetadata.Exists      = true;
-            _header.ExtendedMemberMetadata.StartOffset = _header.CopyTable.EndOffset;
-            _header.ExtendedMemberMetadata.Size        = fieldStorageInfoSize;
+            Header.ExtendedMemberMetadata.Exists      = true;
+            Header.ExtendedMemberMetadata.StartOffset = Header.CopyTable.EndOffset;
+            Header.ExtendedMemberMetadata.Size        = fieldStorageInfoSize;
 
-            _header.PalletTable.Exists      = true;
-            _header.PalletTable.StartOffset = _header.ExtendedMemberMetadata.EndOffset;
-            _header.PalletTable.Size        = palletDataSize;
+            Header.PalletTable.Exists      = true;
+            Header.PalletTable.StartOffset = Header.ExtendedMemberMetadata.EndOffset;
+            Header.PalletTable.Size        = palletDataSize;
 
-            _header.CommonTable.Exists      = true;
-            _header.CommonTable.StartOffset = _header.PalletTable.EndOffset;
-            _header.CommonTable.Size        = commonDataSize;
+            Header.CommonTable.Exists      = true;
+            Header.CommonTable.StartOffset = Header.PalletTable.EndOffset;
+            Header.CommonTable.Size        = commonDataSize;
 
-            reader.BaseStream.Position = _header.ExtendedMemberMetadata.StartOffset;
+            BaseStream.Position = Header.ExtendedMemberMetadata.StartOffset;
             var memberIndex = 0;
-            for (var i = 0; reader.BaseStream.Position < _header.ExtendedMemberMetadata.EndOffset; ++i, ++memberIndex)
+            for (var i = 0; BaseStream.Position < Header.ExtendedMemberMetadata.EndOffset; ++i, ++memberIndex)
             {
                 var isIndexMember = Members[memberIndex].GetCustomAttribute<IndexAttribute>() != null;
-                if (isIndexMember && memberIndex == _header.IndexColumn && _header.IndexTable.Exists)
+                if (isIndexMember && memberIndex == Header.IndexColumn && Header.IndexTable.Exists)
                     ++memberIndex;
 
-                var bitOffset = reader.ReadUInt16();
-                var bitSize = reader.ReadUInt16();
+                var bitOffset = ReadUInt16();
+                var bitSize = ReadUInt16();
 
                 fieldStructures[i].BitOffsetInRecord = bitOffset;
                 fieldStructures[i].BitSize = bitSize;
 
-                fieldStructures[i].AdditionalDataSize = reader.ReadInt32();
-                fieldStructures[i].Compression = (MemberCompression)reader.ReadUInt32();
+                fieldStructures[i].AdditionalDataSize = ReadInt32();
+                fieldStructures[i].Compression = (MemberCompression)ReadUInt32();
 
-                fieldStructures[i].CompressionData = reader.ReadStruct<CompressionData>();
+                fieldStructures[i].CompressionData = this.ReadStruct<CompressionData>();
                 fieldStructures[i].MemberInfo = Members[memberIndex];
 
                 for (var j = 0; j < i; ++j)
@@ -150,7 +151,7 @@ namespace DBFilesClient2.NET.Implementations.WDC1
             for (var i = 0; i < TypeMembers.Length; ++i)
             {
                 var memberInfo = TypeMembers[i];
-                if (memberInfo.MemberInfo.GetCustomAttribute<IndexAttribute>() != null && _header.IndexTable.Exists)
+                if (memberInfo.MemberInfo.GetCustomAttribute<IndexAttribute>() != null && Header.IndexTable.Exists)
                     continue;
 
                 var isMemberArray = memberInfo.MemberInfo.GetMemberType().IsArray;
@@ -178,83 +179,83 @@ namespace DBFilesClient2.NET.Implementations.WDC1
             // 
             // var calculatedSize = (int)Math.Ceiling((float)Serializer.Size / largestFieldSize) * largestFieldSize;
             // if (Header.RecordSize != calculatedSize && Header.StringTable.Exists)
-            //     throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, _header.RecordSize, calculatedSize);
+            //     throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, Header.RecordSize, calculatedSize);
             return true;
         }
 
-        protected override void LoadRecords(BinaryReader reader)
+        protected override void LoadRecords()
         {
             if (!Options.LoadRecords)
                 return;
 
-            if (_header.StringTable.Exists && _header.RecordTable.Exists)
+            if (Header.StringTable.Exists && Header.RecordTable.Exists)
             {
-                reader.BaseStream.Position = _header.RecordTable.StartOffset;
+                BaseStream.Position = Header.RecordTable.StartOffset;
 
-                for (var i = 0; i < _header.RecordCount; ++i)
+                for (var i = 0; i < Header.RecordCount; ++i)
                 {
-                    var recordOffset = reader.BaseStream.Position;
+                    var recordOffset = BaseStream.Position;
 
-                    var newRecord = Serializer.Deserializer(reader);
-                    var newKey = _header.IndexTable.Exists ? IndexTable[i] : Serializer.GetKey(newRecord);
-                    if (_header.IndexTable.Exists)
-                        Serializer.SetKey(newRecord, newKey);
+                    var newRecord = Serializer.Deserialize(this);
+                    var newKey = Header.IndexTable.Exists ? IndexTable[i] : Serializer.KeyGetter(newRecord);
+                    if (Header.IndexTable.Exists)
+                        Serializer.KeySetter(newRecord, newKey);
 
-                    if (_header.CommonTable.Exists)
+                    if (Header.CommonTable.Exists)
                     {
-                        var oldPosition = reader.BaseStream.Position;
+                        var oldPosition = BaseStream.Position;
 
-                        Serializer.CommonTableDeserializer(newKey, newRecord, CommonTable, reader);
+                        // Serializer.CommonTableDeserializer(newKey, newRecord, CommonTable, this);
 
-                        reader.BaseStream.Position = oldPosition;
+                        BaseStream.Position = oldPosition;
                     }
 
                     OnRecordLoaded(newKey, newRecord);
 
                     OffsetMap[newKey] = recordOffset;
 
-                    if (reader.BaseStream.Position > recordOffset + _header.RecordSize)
+                    if (BaseStream.Position > recordOffset + Header.RecordSize)
                         throw new InvalidOperationException();
 
-                    reader.Position = recordOffset + _header.RecordSize;
+                    Position = recordOffset + Header.RecordSize;
                 }
             }
-            else if (_header.OffsetMap.Exists && _header.VariableRecordData.Exists)
+            else if (Header.OffsetMap.Exists && Header.VariableRecordData.Exists)
             {
-                reader.BaseStream.Position = _header.OffsetMap.StartOffset;
+                BaseStream.Position = Header.OffsetMap.StartOffset;
 
                 var offsetList = new List<Tuple<uint, ushort>>();
-                for (var i = 0; i < _header.MaxIndex - _header.MinIndex + 1; ++i)
-                    offsetList.Add(Tuple.Create(reader.ReadUInt32(), reader.ReadUInt16()));
+                for (var i = 0; i < Header.MaxIndex - Header.MinIndex + 1; ++i)
+                    offsetList.Add(Tuple.Create(ReadUInt32(), ReadUInt16()));
 
-                reader.BaseStream.Position = _header.VariableRecordData.StartOffset;
+                BaseStream.Position = Header.VariableRecordData.StartOffset;
 
                 for (var i = 0; i < offsetList.Count; ++i)
                 {
-                    var newRecord = Serializer.Deserializer(reader);
-                    var newKey = _header.IndexTable.Exists ? IndexTable[i] : Serializer.GetKey(newRecord);
-                    if (_header.IndexTable.Exists)
-                        Serializer.SetKey(newRecord, newKey);
+                    var newRecord = Serializer.Deserialize(this);
+                    var newKey = Header.IndexTable.Exists ? IndexTable[i] : Serializer.KeyGetter(newRecord);
+                    if (Header.IndexTable.Exists)
+                        Serializer.KeySetter(newRecord, newKey);
                     
                     OnRecordLoaded(newKey, newRecord);
                     
-                    if (reader.BaseStream.Position != offsetList[i].Item1 + offsetList[i].Item2)
+                    if (BaseStream.Position != offsetList[i].Item1 + offsetList[i].Item2)
                         throw new InvalidOperationException();
                 }
             }
 
-            if (_header.CopyTable.Exists)
+            if (Header.CopyTable.Exists)
             {
-                reader.BaseStream.Position = _header.CopyTable.StartOffset;
+                BaseStream.Position = Header.CopyTable.StartOffset;
 
-                for (var i = 0; i < _header.CopyTable.Size / (SizeCache<TKey>.Size * 2); ++i)
+                for (var i = 0; i < Header.CopyTable.Size / (SizeCache<TKey>.Size * 2); ++i)
                 {
-                    var newKey = reader.ReadStruct<TKey>();
-                    var oldKey = reader.ReadStruct<TKey>();
+                    var newKey = this.ReadStruct<TKey>();
+                    var oldKey = this.ReadStruct<TKey>();
 
-                    reader.BaseStream.Position = OffsetMap[oldKey];
-                    var newRecord = Serializer.Deserializer(reader);
-                    Serializer.SetKey(newRecord, newKey);
+                    BaseStream.Position = OffsetMap[oldKey];
+                    var newRecord = Serializer.Deserialize(this);
+                    Serializer.KeySetter(newRecord, newKey);
                     OnRecordLoaded(newKey, newRecord);
                 }
             }

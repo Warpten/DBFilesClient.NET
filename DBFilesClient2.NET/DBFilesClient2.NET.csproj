@@ -59,7 +59,6 @@
     <Compile Include="Attributes\IndexAttribute.cs" />
     <Compile Include="BaseStorageReader.cs" />
     <Compile Include="BinaryReader.cs" />
-    <Compile Include="BitReader.cs" />
     <Compile Include="Exceptions\InvalidStructureException.cs" />
     <Compile Include="Exceptions\StorageLoadException.cs" />
     <Compile Include="Implementations\CommonTable.cs" />

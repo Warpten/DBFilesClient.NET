@@ -6,12 +6,14 @@ using DBFilesClient2.NET.Internals;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace DBFilesClient2.NET
 {
-    internal abstract class BaseStorageReader<TKey, TValue, THeader> : IStorageReader<TKey, TValue>
+    internal abstract class BaseStorageReader<TKey, TValue, THeader> : BinaryReader, IStorageReader<TKey, TValue, THeader>
         where TKey : struct
         where TValue : class, new()
         where THeader : IStorageHeader, new()
@@ -22,8 +24,7 @@ namespace DBFilesClient2.NET
 
         public StorageOptions Options { get; private set; }
 
-        protected THeader _header;
-        public IStorageHeader Header => _header;
+        public THeader Header { get; } = new THeader();
         #endregion
 
         public ISerializer<TKey, TValue> Serializer { get; set; }
@@ -52,10 +53,9 @@ namespace DBFilesClient2.NET
 
         public ICommonTable<TKey, TValue> CommonTable { get; private set; }
 
-        protected BaseStorageReader(StorageOptions options)
+        protected BaseStorageReader(Stream baseStream, StorageOptions options) : base(baseStream, options)
         {
             Options = options;
-            _header = new THeader();
 
             var keyCode = Type.GetTypeCode(typeof(TKey));
             if (keyCode != TypeCode.Int32 && keyCode != TypeCode.UInt32)
@@ -65,69 +65,66 @@ namespace DBFilesClient2.NET
         public event Action<TKey, TValue> RecordLoaded;
         public event Action<long, string> StringLoaded;
 
-        public abstract bool ParseHeader(BinaryReader reader);
+        public abstract bool ParseHeader();
 
-        protected virtual void LoadCommonDataTable(BinaryReader reader)
+        protected virtual void LoadCommonDataTable()
         {
             throw new NotSupportedException("This method should not have been called!");
         }
 
-        public virtual void LoadFile(BinaryReader reader)
+        public virtual void LoadFile()
         {
-            reader.UseInlineStrings = !Header.StringTable.Exists;
-            reader.StringTableOffset = Header.StringTable.StartOffset;
+            TryEarlyParseStringPool();
+            TryParseIndexTable();
+            TryParseCommonTable();
 
-            TryEarlyParseStringPool(reader);
-            TryParseIndexTable(reader);
-            TryParseCommonTable(reader);
-
-            LoadRecords(reader);
+            LoadRecords();
         }
 
-        protected abstract void LoadRecords(BinaryReader reader);
+        protected abstract void LoadRecords();
 
-        protected void TryEarlyParseStringPool(BinaryReader reader)
+        protected void TryEarlyParseStringPool()
         {
             if (Options.LoadStringPool && StringLoaded != null && Header.StringTable.Exists)
             {
-                reader.BaseStream.Position = Header.StringTable.StartOffset;
+                BaseStream.Position = Header.StringTable.StartOffset;
 
-                while (reader.BaseStream.Position <= Header.StringTable.StartOffset + Header.StringTable.Size)
+                while (BaseStream.Position <= Header.StringTable.StartOffset + Header.StringTable.Size)
                 {
-                    var stringOffset = reader.BaseStream.Position;
-                    var @string = reader.ReadString();
+                    var stringOffset = BaseStream.Position;
+                    var @string = ReadString();
 
                     StringLoaded.Invoke(stringOffset - Header.StringTable.StartOffset, @string);
                 }
             }
         }
 
-        protected void TryParseIndexTable(BinaryReader reader)
+        protected void TryParseIndexTable()
         {
             if (Header.IndexTable.Exists)
             {
-                reader.BaseStream.Position = Header.IndexTable.StartOffset;
+                BaseStream.Position = Header.IndexTable.StartOffset;
 
                 for (var i = 0; i < Header.RecordCount; ++i)
-                    IndexTable.Add(reader.ReadStruct<TKey>());
+                    IndexTable.Add(this.ReadStruct<TKey>());
             }
         }
 
-        protected void TryParseCommonTable(BinaryReader reader)
+        protected void TryParseCommonTable()
         {
             if (Header.CommonTable.Exists)
             {
-                reader.BaseStream.Position = Header.CommonTable.StartOffset;
-                CommonTable = new WDCCommonTable<TKey, TValue>(this, reader);
+                BaseStream.Position = Header.CommonTable.StartOffset;
+                CommonTable = new WDCCommonTable<TKey, TValue, THeader>(this);
             }
         }
 
         protected void OnRecordLoaded(TKey key, TValue value) => RecordLoaded(key, value);
 
-        protected void GenerateMemberMetadata(BinaryReader reader)
+        protected void GenerateMemberMetadata()
         {
             // Second pass - Generate array sizes
-            for (var i = 0; i < _header.FieldCount - 1; ++i)
+            for (var i = 0; i < Header.FieldCount - 1; ++i)
             {
                 var currentField = TypeMembers[i];
                 var nextField = TypeMembers[i + 1];
@@ -135,10 +132,10 @@ namespace DBFilesClient2.NET
             }
 
             // Third pass - flatten elements that were compacted by the user in a single array, warning them in the meantime
-            for (int metaItr = 0, structItr = 0; metaItr < _header.FieldCount; ++metaItr, ++structItr)
+            for (int metaItr = 0, structItr = 0; metaItr < Header.FieldCount; ++metaItr, ++structItr)
             {
                 var memberInfo = Members[structItr];
-                if (memberInfo.GetCustomAttribute<IndexAttribute>() != null && _header.IndexTable.Exists)
+                if (memberInfo.GetCustomAttribute<IndexAttribute>() != null && Header.IndexTable.Exists)
                     memberInfo = Members[structItr += 1];
 
                 TypeMembers[metaItr].MemberInfo = memberInfo;
@@ -158,7 +155,7 @@ namespace DBFilesClient2.NET
                     //! TODO No longer needed for WDC1!
 
                     // If we found out the last field doesn't have StoragePresenceAttribute ...
-                    if (metaItr == _header.FieldCount - 1) // ... and is an array, then complain very loudly!
+                    if (metaItr == Header.FieldCount - 1) // ... and is an array, then complain very loudly!
                         throw new InvalidStructureException<TValue>(ExceptionReason.MissingStoragePresence, memberInfo.Name);
 
                     continue;
@@ -168,7 +165,7 @@ namespace DBFilesClient2.NET
                 var matchingFieldCount = 0;
                 var resultingArraySize = 0;
                 var j = metaItr + 1;
-                for (; j < _header.FieldCount; ++j)
+                for (; j < Header.FieldCount; ++j)
                 {
                     ++matchingFieldCount;
                     resultingArraySize += TypeMembers[j].GetArraySize();
@@ -190,6 +187,27 @@ namespace DBFilesClient2.NET
             }
 
             TypeMembers = TypeMembers.Where(f => f.MemberInfo != null).ToArray();
+        }
+
+        public void CheckRecordSize()
+        {
+            if (Header.RecordSize != Serializer.RecordSize)
+                throw new InvalidStructureException<TValue>(ExceptionReason.StructureSizeMismatch, Header.RecordSize, Serializer.RecordSize);
+        }
+
+        public override string ReadString(Encoding encoding)
+        {
+            if (!Header.StringTable.Exists)
+                return ReadStringDirect(encoding);
+
+            // Not used if strings are inlined, so doesn't matter.
+            var oldPosition = BaseStream.Position + 4;
+
+            BaseStream.Position = ReadInt32() + Header.StringTable.StartOffset;
+            var result = ReadStringDirect(encoding);
+            BaseStream.Position = oldPosition;
+
+            return result;
         }
     }
 }

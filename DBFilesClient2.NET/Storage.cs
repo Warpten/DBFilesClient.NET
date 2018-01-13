@@ -13,7 +13,7 @@ using System.IO;
 
 namespace DBFilesClient2.NET
 {
-    public class Storage<TKey, TValue> : IDictionary<TKey, TValue> where TValue : class, new() where TKey : struct
+    public class Storage<TKey, TValue> : Dictionary<TKey, TValue> where TValue : class, new() where TKey : struct
     {
         private Dictionary<TKey, TValue> _store = new Dictionary<TKey, TValue>();
 
@@ -62,83 +62,41 @@ namespace DBFilesClient2.NET
             switch (signature)
             {
                 case 0x31434457: // WDC1
-                    fileReader = new WDC1Reader<TKey, TValue>(options);
+                    fileReader = new WDC1Reader<TKey, TValue>(dataStream, options);
                     break;
                 case 0x36424457: // WDB6
-                    fileReader = new WDB6Reader<TKey, TValue>(options);
+                    fileReader = new WDB6Reader<TKey, TValue>(dataStream, options);
                     break;
                 case 0x35424457: // WDB5
-                    fileReader = new WDB5Reader<TKey, TValue>(options);
+                    fileReader = new WDB5Reader<TKey, TValue>(dataStream, options);
                     break;
                 case 0x32424457: // WDB2
-                    fileReader = new WDB2Reader<TKey, TValue>(options);
+                    fileReader = new WDB2Reader<TKey, TValue>(dataStream, options);
                     break;
                 case 0x43424457: // WDBC
-                    fileReader = new WDBCReader<TKey, TValue>(options);
+                    fileReader = new WDBCReader<TKey, TValue>(dataStream, options);
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown signature 0x{signature:X8} for this DBC!");
             }
 
             fileReader.Serializer = SerializerFactory.CreateInstance<TKey, TValue>(signature);
-            fileReader.Serializer.Storage = fileReader;
+            
+            if (!fileReader.ParseHeader())
+                return;
 
-            using (var reader = SerializerFactory.CreateReader(signature, dataStream, options))
-            {
-                if (!fileReader.ParseHeader(reader))
-                    return;
+            fileReader.Serializer.SetStorage(fileReader);
 
-                Debug.Assert(fileReader.Serializer != null);
+            // Only bind string pool if we wanted to parse it.
+            if (options.LoadStringPool)
+                fileReader.StringLoaded += StringLoaded;
 
-                // Only bind string pool if we wanted to parse it.
-                if (options.LoadStringPool)
-                    fileReader.StringLoaded += StringLoaded;
+            fileReader.RecordLoaded += Add;
+            fileReader.LoadFile();
+            fileReader.RecordLoaded -= Add;
 
-                fileReader.RecordLoaded += Add;
-                fileReader.LoadFile(reader);
-                fileReader.RecordLoaded -= Add;
-
-                if (options.LoadStringPool)
-                    fileReader.StringLoaded -= StringLoaded;
-            }
-        }
-
-        public bool ContainsKey(TKey key) => _store.ContainsKey(key);
-
-        public void Add(TKey key, TValue value) => _store.Add(key, value);
-
-        public bool Remove(TKey key) => _store.Remove(key);
-
-        public bool TryGetValue(TKey key, out TValue value) => _store.TryGetValue(key, out value);
-
-        public void Clear() => _store.Clear();
-
-        public bool Contains(KeyValuePair<TKey, TValue> item) => ((IDictionary<TKey, TValue>)_store).Contains(item);
-
-        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
-        {
-            ((IDictionary<TKey, TValue>)_store).CopyTo(array, arrayIndex);
-        }
-
-        public bool Remove(KeyValuePair<TKey, TValue> item) => ((IDictionary<TKey, TValue>)_store).Remove(item);
-    
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => ((IDictionary<TKey, TValue>)_store).GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => ((IDictionary<TKey, TValue>)_store).GetEnumerator();
-
-        public void Add(KeyValuePair<TKey, TValue> item) => ((IDictionary<TKey, TValue>)_store).Add(item);
-
-        public ICollection<TKey> Keys => ((IDictionary<TKey, TValue>)_store).Keys;
-
-        public ICollection<TValue> Values => ((IDictionary<TKey, TValue>)_store).Values;
-
-        public int Count => ((IDictionary<TKey, TValue>)_store).Count;
-
-        public bool IsReadOnly => ((IDictionary<TKey, TValue>)_store).IsReadOnly;
-
-        public TValue this[TKey key] {
-            get => ((IDictionary<TKey, TValue>)_store)[key];
-            set => ((IDictionary<TKey, TValue>)_store)[key] = value;
+            if (options.LoadStringPool)
+                fileReader.StringLoaded -= StringLoaded;
         }
     }
 }
