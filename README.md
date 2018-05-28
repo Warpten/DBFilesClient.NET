@@ -1,4 +1,7 @@
 # DBFilesClient.NET [![NuGet version](https://badge.fury.io/nu/DBFilesClient.NET.svg)](https://badge.fury.io/nu/DBFilesClient.NET)
+
+:bangbang: Support for DBFilesClient.NET has been discontinued. For an up-to-date libary, see [DBClientFiles.NET](http://github.com/Warpten/DBClientFiles.NET).
+
 A blazing-fast DBC/DB2 reader for World of Warcraft.
 Name is totally not stolen from [LordJZ's old 4.3.4 library](http://github.com/LordJZ/DBFilesClient.NET).
 
